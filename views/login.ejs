@@ -1,0 +1,14 @@
+<div class="auth-card">
+  <h1>Đăng nhập</h1>
+  <p class="muted">Hệ thống quản lý công tác chính trị</p>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="post" action="/login">
+    <label>Tên đăng nhập
+      <input type="text" name="username" value="<%= username %>" autocomplete="username" required autofocus>
+    </label>
+    <label>Mật khẩu
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Đăng nhập</button>
+  </form>
+</div>

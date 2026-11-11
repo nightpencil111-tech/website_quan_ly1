@@ -1,0 +1,44 @@
+<%
+const role = user ? user.role : null;
+const nav = [];
+if (user) {
+  nav.push({ href: '/', label: 'Tổng quan' }, { href: '/my', label: 'Việc của tôi' }, { href: '/tasks', label: 'Công việc' }, { href: '/kanban', label: 'Kanban' }, { href: '/calendar', label: 'Lịch công tác' });
+  if (role === 'manager' || role === 'admin') nav.push({ href: '/people', label: 'Quân số' }, { href: '/templates', label: 'Mẫu & Việc định kỳ' }, { href: '/reports', label: 'Báo cáo & Hiệu suất' });
+  if (role === 'admin') nav.push({ href: '/admin/users', label: 'Quản trị' });
+}
+const isActive = (h) => h === '/' ? path === '/' : path === h || path.startsWith(h + '/');
+%><!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf" content="<%= csrf %>">
+  <title><%= title %> – Quản lý công tác chính trị</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="<%= user ? 'has-nav' : 'no-nav' %>">
+<% if (user) { %>
+  <header class="topbar">
+    <button type="button" class="menu-toggle" aria-label="Thu gọn/mở menu" onclick="document.body.classList.toggle('nav-open')">&#9776;</button>
+    <span class="brand">Quản lý công tác chính trị</span>
+    <span class="spacer"></span>
+    <span class="who"><strong><%= user.full_name %></strong><% if (user.rank) { %> · <%= user.rank %><% } %></span>
+    <a class="link-btn" href="/change-password">Đổi mật khẩu</a>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="btn btn-light">Đăng xuất</button>
+    </form>
+  </header>
+  <nav class="sidebar" aria-label="Menu chính">
+    <ul>
+      <% nav.forEach(function (n) { %>
+        <li><a href="<%= n.href %>" class="<%= isActive(n.href) ? 'active' : '' %>"><%= n.label %></a></li>
+      <% }) %>
+    </ul>
+  </nav>
+<% } %>
+  <main class="content">
+    <%- body %>
+  </main>
+</body>
+</html>
