@@ -75,6 +75,7 @@ async function main() {
     await shot('16-ctv-hieu-suat', '/reports/performance');
     await shot('17-ctv-quan-so', '/people');
     await shot('18-ctv-mau-viec-dinh-ky', '/templates');
+    await shot('18b-ctv-viec-dinh-ky', '/templates?tab=recurring');
     await shot('19-ctv-tong-quan-dien-thoai', '/', { size: MOBILE });
 
     // Kéo thả Kanban thật: "Chưa làm" -> "Đang làm"

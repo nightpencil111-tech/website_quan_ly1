@@ -44,13 +44,18 @@ Tài khoản quản trị mặc định: **admin / admin123**. Hệ thống bắ
 npm run demo
 ```
 
-Lệnh này từ chối chạy nếu cơ sở dữ liệu đã có công việc (tránh làm lẫn dữ liệu thật); chỉ thêm `-- --force` khi thật sự cần. Tài khoản thử, mật khẩu chung `Demo@1234`: `admin`, `ctv` (quản lý), `cs01` … `cs10` (chiến sĩ). Chế độ này đặt lại mật khẩu `admin` thành `Demo@1234`, vì vậy **không chạy trên hệ thống thật**. Muốn dùng thử trên dữ liệu riêng, đặt biến `DB_PATH`, ví dụ:
+Lệnh này từ chối chạy nếu cơ sở dữ liệu không phải bản mới cài (đã có công việc, đã có tài khoản ngoài admin, hoặc admin đã đổi mật khẩu); chỉ thêm `-- --force` khi thật sự cần (khi đó mật khẩu admin bị đặt lại, có cảnh báo). Tài khoản thử, mật khẩu chung `Demo@1234`: `admin`, `ctv` (quản lý), `cs01` … `cs10` (chiến sĩ). Chế độ này đặt lại mật khẩu `admin` thành `Demo@1234`, vì vậy **không chạy trên hệ thống thật**. Muốn dùng thử trên dữ liệu riêng, đặt biến `DB_PATH`, ví dụ:
 
 ```powershell
 $env:DB_PATH = "data\demo.db"; npm run demo; npm start
 ```
 
-(Công cụ chụp ảnh `npm run screenshots` chỉ dành cho lập trình viên, cần Playwright cài riêng và không nằm trong thư viện bắt buộc.)
+Công cụ chụp ảnh `npm run screenshots` chỉ dành cho lập trình viên và cần cài Playwright riêng (không nằm trong thư viện bắt buộc):
+
+```powershell
+npm i -D playwright
+npx playwright install chromium
+```
 
 ## 5. Sao lưu và khôi phục
 

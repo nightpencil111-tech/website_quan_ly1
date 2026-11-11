@@ -33,27 +33,30 @@ function insertUser(db, u) {
 
 function fillDemo(db, { force = false, log = () => {} } = {}) {
   seed(db);
-  const existing = db.prepare('SELECT COUNT(*) AS c FROM tasks').get().c;
-  if (existing > 0 && !force) {
-    throw new Error('CSDL đã có công việc. Dùng --force nếu đồng chí chắc chắn muốn thêm dữ liệu thử.');
-  }
   const t0 = today();
+  const reasons = [];
+  if (db.prepare('SELECT COUNT(*) AS c FROM tasks').get().c > 0) reasons.push('đã có công việc');
+  if (db.prepare("SELECT COUNT(*) AS c FROM users WHERE username != 'admin'").get().c > 0) reasons.push('đã có tài khoản ngoài admin');
+  if (db.prepare("SELECT COUNT(*) AS c FROM users WHERE username = 'admin' AND must_change_password = 0").get().c > 0) {
+    reasons.push('admin đã đặt mật khẩu riêng');
+  }
+  if (reasons.length && !force) {
+    throw new Error(`CSDL không phải bản mới cài (${reasons.join('; ')}). Dùng --force nếu đồng chí chắc chắn muốn thêm dữ liệu thử.`);
+  }
+  if (reasons.length) {
+    log(`CẢNH BÁO: mật khẩu tài khoản admin sẽ bị đặt lại thành ${PASSWORD} (${reasons.join('; ')}).`);
+  }
   const admin = db.prepare("SELECT id FROM users WHERE username = 'admin'").get();
   db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?').run(hashPassword(PASSWORD), admin.id);
 
-  const unitIds = ['Trung đội 1', 'Trung đội 2', 'Trung đội 3'].map((n) => users.createUnit(db, n, admin.id));
-  const unitId = (x) => (typeof x === 'object' && x !== null ? x.id : x);
-  const units = unitIds.map(unitId);
-  if (units.some((x) => !Number.isInteger(Number(x)))) {
-    throw new Error('Không tạo được đơn vị');
-  }
+  const units = ['Trung đội 1', 'Trung đội 2', 'Trung đội 3'].map((n) => users.createUnit(db, n, admin.id));
 
   const mgrId = insertUser(db, {
     username: 'ctv', full_name: 'Trần Quang Huy', rank: 'Thiếu úy', position: 'Chính trị viên phó đại đội',
-    unit_id: Number(units[0]), role: 'manager', party_status: 'dang_vien',
+    unit_id: units[0], role: 'manager', party_status: 'dang_vien',
   });
   const ids = MEMBERS.map((m) => insertUser(db, {
-    username: m[0], full_name: m[1], rank: m[2], position: m[3], unit_id: Number(units[m[4]]), role: 'member', party_status: m[5],
+    username: m[0], full_name: m[1], rank: m[2], position: m[3], unit_id: units[m[4]], role: 'member', party_status: m[5],
   }));
   const mgr = { id: mgrId, role: 'manager' };
   const asMember = (i) => ({ id: ids[i], role: 'member' });
