@@ -16,7 +16,6 @@
   <label>Hạn hoàn thành <input type="date" name="due_date" value="<%= form.due_date || '' %>" required></label>
   <fieldset class="assignees">
     <legend>Người thực hiện</legend>
-    <%# Task 6 (public/js/task-form.js) hiển thị gợi ý người thực hiện vào đây %>
     <div id="suggest-box"></div>
     <% people.forEach(function (p) { %>
       <label class="check"><input type="checkbox" name="assignee_ids" value="<%= p.id %>" <%= selected.includes(p.id) ? 'checked' : '' %>> <%= p.full_name %><% if (p.rank) { %> (<%= p.rank %>)<% } %><% if (p.unit_name) { %> – <%= p.unit_name %><% } %></label>
@@ -32,3 +31,4 @@
   <button type="submit" class="btn btn-primary">Lưu</button>
   <a class="btn" href="<%= target ? '/tasks/' + target.id : '/tasks' %>">Hủy</a>
 </form>
+<script src="/js/task-form.js" defer></script>

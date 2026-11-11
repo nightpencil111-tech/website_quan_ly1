@@ -2,6 +2,8 @@ const express = require('express');
 const { requireLogin, requireRole, forbid } = require('../auth');
 const tasks = require('../services/tasks');
 const users = require('../services/users');
+const smart = require('../services/smart');
+const { today } = require('../util/date');
 const { AppError } = require('../util/errors');
 const { LABELS } = require('../util/text');
 
@@ -67,7 +69,7 @@ function statusActions(task, user) {
 
 module.exports = (db) => {
   const r = express.Router();
-  r.use(['/tasks', '/kanban', '/my'], requireLogin);
+  r.use(['/tasks', '/kanban', '/my', '/api/suggest'], requireLogin);
 
   const wantsJson = (req) => req.is('json') || /application\/json/.test(req.get('accept') || '');
   const notFound = (res) => res.status(404).render('error', { title: 'Không tìm thấy', code: 404, message: 'Không tìm thấy công việc' });
@@ -218,10 +220,16 @@ module.exports = (db) => {
     res.render('tasks/kanban', { title: 'Bảng Kanban', columns, LABELS });
   });
 
-  // Task 6 sẽ thay thứ tự bằng "Việc cần làm hôm nay".
+  // Việc cần làm hôm nay: quá hạn trước, sau đó theo điểm ưu tiên.
   r.get('/my', (req, res) => {
-    const mine = tasks.listTasks(db, { assignee_id: req.user.id }).filter((t) => t.status !== 'hoan_thanh');
-    res.render('tasks/mine', { title: 'Việc của tôi', tasks: mine, LABELS });
+    res.render('tasks/mine', { title: 'Việc của tôi', tasks: smart.todayList(db, req.user.id, today()), LABELS });
+  });
+
+  r.get('/api/suggest', requireRole(...MANAGERS), (req, res) => {
+    const q = clean(req.query);
+    const category = typeof q.category === 'string' && LABELS.category[q.category] ? q.category : 'khac';
+    const due = typeof q.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q.due_date) ? q.due_date : undefined;
+    res.json({ ok: true, suggestions: smart.suggestAssignees(db, { category, due_date: due }, today()) });
   });
 
   return r;
