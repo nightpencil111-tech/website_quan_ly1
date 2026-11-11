@@ -1,0 +1,17 @@
+<%- include('_tabs') %>
+<h1>Nhật ký hoạt động</h1>
+<p class="muted">Tổng cộng <%= total %> bản ghi · Trang <%= page %>/<%= pages %> (giờ UTC)</p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th></tr></thead>
+  <tbody>
+  <% rows.forEach(function (a) { %>
+    <tr><td><%= a.created_at %></td><td><%= a.full_name || '' %></td><td><%= a.action %></td><td><%= a.target || '' %></td><td><%= a.detail || '' %></td></tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
+<p class="pager">
+  <% if (page > 1) { %><a class="btn" href="/admin/audit?page=<%= page - 1 %>">Trang trước</a><% } %>
+  <% if (page < pages) { %><a class="btn" href="/admin/audit?page=<%= page + 1 %>">Trang sau</a><% } %>
+</p>

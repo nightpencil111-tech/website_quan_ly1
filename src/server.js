@@ -37,6 +37,8 @@ function createApp({ dbPath }) {
 
   app.use(require('./routes/auth')(db));
   app.use(require('./routes/dashboard')(db));
+  app.use(require('./routes/people')(db));
+  app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Không tìm thấy', code: 404, message: 'Không tìm thấy trang đồng chí yêu cầu' });

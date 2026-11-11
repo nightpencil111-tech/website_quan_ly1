@@ -1,0 +1,12 @@
+<%- include('_tabs') %>
+<h1>Cài đặt hệ thống</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (saved) { %><div class="alert alert-info">Đã lưu cài đặt.</div><% } %>
+<form method="post" action="/admin/settings" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Ngưỡng quá tải (số việc chưa hoàn thành tối đa của một người)
+    <input type="number" name="overload_threshold" min="1" step="1" value="<%= threshold %>" required>
+  </label>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+</form>
+<p><a class="btn" href="/admin/backup">Tải bản sao lưu dữ liệu</a></p>

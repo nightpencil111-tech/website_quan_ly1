@@ -1,0 +1,21 @@
+<h1>Quân số</h1>
+<form method="get" action="/people" class="inline-form">
+  <label>Đơn vị
+    <select name="unit" onchange="this.form.submit()">
+      <option value="">Tất cả</option>
+      <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= unitId === u.id ? 'selected' : '' %>><%= u.name %></option><% }) %>
+    </select>
+  </label>
+  <noscript><button type="submit" class="btn">Lọc</button></noscript>
+</form>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Họ tên</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th><th>Đảng/Đoàn</th><th>Việc đang làm</th></tr></thead>
+  <tbody>
+  <% rows.forEach(function (u) { %>
+    <tr><td><%= u.full_name %></td><td><%= u.rank || '' %></td><td><%= u.position || '' %></td><td><%= u.unit_name || '' %></td><td><%= party[u.party_status] %></td><td><%= u.open_tasks %></td></tr>
+  <% }) %>
+  <% if (!rows.length) { %><tr><td colspan="6">Không có ai trong danh sách.</td></tr><% } %>
+  </tbody>
+</table>
+</div>

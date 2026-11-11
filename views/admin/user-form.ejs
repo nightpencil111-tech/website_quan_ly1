@@ -1,0 +1,33 @@
+<%- include('_tabs') %>
+<h1><%= target ? 'Sửa tài khoản' : 'Thêm tài khoản' %></h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="post" action="<%= target ? '/admin/users/' + target.id : '/admin/users' %>" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Tên đăng nhập
+    <% if (target) { %><input value="<%= target.username %>" disabled>
+    <% } else { %><input name="username" value="<%= form.username || '' %>" required maxlength="32" autocomplete="off"><% } %>
+  </label>
+  <label>Họ tên <input name="full_name" value="<%= form.full_name || '' %>" required></label>
+  <label>Cấp bậc <input name="rank" value="<%= form.rank || '' %>" placeholder="Ví dụ: Thượng úy"></label>
+  <label>Chức vụ <input name="position" value="<%= form.position || '' %>"></label>
+  <label>Đơn vị
+    <select name="unit_id">
+      <option value="">(Chưa phân đơn vị)</option>
+      <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= String(form.unit_id || '') === String(u.id) ? 'selected' : '' %>><%= u.name %></option><% }) %>
+    </select>
+  </label>
+  <label>Vai trò
+    <select name="role">
+      <% Object.keys(roles).forEach(function (k) { %><option value="<%= k %>" <%= form.role === k ? 'selected' : '' %>><%= roles[k] %></option><% }) %>
+    </select>
+  </label>
+  <label>Diện Đảng/Đoàn
+    <select name="party_status">
+      <% Object.keys(party).forEach(function (k) { %><option value="<%= k %>" <%= form.party_status === k ? 'selected' : '' %>><%= party[k] %></option><% }) %>
+    </select>
+  </label>
+  <label>Điện thoại <input name="phone" value="<%= form.phone || '' %>"></label>
+  <% if (!target) { %><p class="muted">Hệ thống sẽ tạo mật khẩu tạm; người dùng phải đổi ở lần đăng nhập đầu tiên.</p><% } %>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="/admin/users">Hủy</a>
+</form>

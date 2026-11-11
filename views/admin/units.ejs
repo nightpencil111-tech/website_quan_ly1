@@ -1,0 +1,31 @@
+<%- include('_tabs') %>
+<h1>Quản trị đơn vị</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="post" action="/admin/units" class="inline-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <input name="name" placeholder="Tên đơn vị mới" required>
+  <button type="submit" class="btn btn-primary">Thêm đơn vị</button>
+</form>
+<table class="table">
+  <thead><tr><th>Tên đơn vị</th><th>Số người</th><th></th></tr></thead>
+  <tbody>
+  <% units.forEach(function (u) { %>
+    <tr>
+      <td>
+        <form method="post" action="/admin/units/<%= u.id %>" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input name="name" value="<%= u.name %>" required>
+          <button type="submit" class="btn">Đổi tên</button>
+        </form>
+      </td>
+      <td><%= u.member_count %></td>
+      <td>
+        <form method="post" action="/admin/units/<%= u.id %>/delete" class="inline" onsubmit="return confirm('Xóa đơn vị này?');">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit" class="btn">Xóa</button>
+        </form>
+      </td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>

@@ -1,0 +1,35 @@
+<%- include('_tabs') %>
+<h1>Quản trị tài khoản</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<p><a class="btn btn-primary" href="/admin/users/new">Thêm tài khoản</a></p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Họ tên</th><th>Tên đăng nhập</th><th>Cấp bậc / Chức vụ</th><th>Đơn vị</th><th>Vai trò</th><th>Đảng/Đoàn</th><th>Việc đang làm</th><th>Trạng thái</th><th></th></tr></thead>
+  <tbody>
+  <% users.forEach(function (u) { %>
+    <tr class="<%= u.active ? '' : 'row-inactive' %>">
+      <td><%= u.full_name %></td>
+      <td><%= u.username %></td>
+      <td><%= [u.rank, u.position].filter(Boolean).join(' · ') %></td>
+      <td><%= u.unit_name || '' %></td>
+      <td><%= roles[u.role] %></td>
+      <td><%= party[u.party_status] %></td>
+      <td><%= u.open_tasks %></td>
+      <td><% if (u.active) { %>Hoạt động<% } else { %><span class="badge badge-off">Đã khóa</span><% } %><% if (u.must_change_password) { %> <span class="badge">Chờ đổi mật khẩu</span><% } %></td>
+      <td class="actions">
+        <a class="btn" href="/admin/users/<%= u.id %>/edit">Sửa</a>
+        <form method="post" action="/admin/users/<%= u.id %>/active" class="inline">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="active" value="<%= u.active ? 0 : 1 %>">
+          <button type="submit" class="btn"><%= u.active ? 'Khóa' : 'Mở khóa' %></button>
+        </form>
+        <form method="post" action="/admin/users/<%= u.id %>/reset" class="inline" onsubmit="return confirm('Đặt lại mật khẩu cho tài khoản này?');">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit" class="btn">Đặt lại mật khẩu</button>
+        </form>
+      </td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>
