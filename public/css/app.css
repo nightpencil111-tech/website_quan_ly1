@@ -149,3 +149,19 @@ body.no-nav .content { max-width: 480px; margin: 40px auto; }
   .cal-wd-m { display: inline; }
   .chip { white-space: normal; font-size: 14px; padding: 4px 8px; }
 }
+
+/* Tổng quan & báo cáo */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 14px 0; }
+.stat-card { display: flex; flex-direction: column; align-items: center; background: #fff; border: 1px solid var(--border); border-top: 4px solid var(--green); border-radius: 4px; padding: 12px 8px; text-decoration: none; color: inherit; }
+.stat-card.warn { border-top-color: var(--danger); }
+.stat-card.warn .stat-n { color: var(--danger); }
+.stat-n { font-size: 32px; font-weight: 700; color: var(--green-dark); line-height: 1.1; }
+.stat-l { font-size: 14px; color: #555; text-align: center; }
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 12px 16px; margin-bottom: 16px; }
+.panel h2 { margin: 0 0 8px; font-size: 18px; }
+.panel-warn { border-color: #e0a800; background: #fff9e0; }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.chart-box { position: relative; height: 280px; }
+.report-text { width: 100%; min-height: 420px; font-family: inherit; font-size: 15px; line-height: 1.5; padding: 10px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; }
+.range-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.tab-links { display: flex; gap: 8px; margin-bottom: 12px; }

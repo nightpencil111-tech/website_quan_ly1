@@ -42,6 +42,7 @@ function createApp({ dbPath }) {
   app.use(require('./routes/tasks')(db));
   app.use(require('./routes/templates')(db));
   app.use(require('./routes/calendar')(db));
+  app.use(require('./routes/reports')(db));
   app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {

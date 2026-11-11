@@ -7,35 +7,14 @@ const templates = require('../services/templates');
 const { today } = require('../util/date');
 const { AppError } = require('../util/errors');
 const { LABELS } = require('../util/text');
+const { clean, scopeFilters: scope } = require('../util/filters');
 
 const isManager = (u) => u.role === 'admin' || u.role === 'manager';
 const MANAGERS = ['admin', 'manager'];
 
-// Ruling R8: bỏ chuỗi rỗng; assignee_ids → mảng số nguyên; overdue chỉ khi '1'.
-function clean(obj) {
-  const out = {};
-  for (const [k, v] of Object.entries(obj || {})) {
-    if (typeof v === 'string') {
-      if (v.trim() !== '') out[k] = v;
-    } else if (Array.isArray(v)) {
-      if (v.length) out[k] = v;
-    } else if (v !== undefined && v !== null) out[k] = v;
-  }
-  return out;
-}
-
 function parseIds(v) {
   if (v === undefined || v === null || v === '') return [];
   return [].concat(v).map((x) => Number(x)).filter((n) => Number.isInteger(n) && n > 0);
-}
-
-function parseFilters(query) {
-  const q = clean(query);
-  const f = {};
-  for (const k of ['status', 'category', 'priority', 'q']) if (typeof q[k] === 'string') f[k] = q[k].trim();
-  if (q.assignee_id && /^\d+$/.test(String(q.assignee_id))) f.assignee_id = Number(q.assignee_id);
-  if (q.overdue === '1') f.overdue = true;
-  return f;
 }
 
 function formData(db, body) {
@@ -100,11 +79,7 @@ module.exports = (db) => {
     next();
   };
 
-  const scopeFilters = (req) => {
-    const f = parseFilters(req.query);
-    if (!isManager(req.user)) f.assignee_id = req.user.id;
-    return f;
-  };
+  const scopeFilters = (req) => scope(req.user, req.query);
   const qs = (req) => {
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(clean(req.query))) if (typeof v === 'string') p.set(k, v);

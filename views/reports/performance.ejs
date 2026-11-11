@@ -1,0 +1,22 @@
+<h1>Báo cáo & Hiệu suất</h1>
+<%- include('_nav', { active: 'perf' }) %>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="get" action="/reports/performance" class="range-form inline-form">
+  <label>Từ ngày <input type="date" name="from" value="<%= range.from %>" required></label>
+  <label>đến ngày <input type="date" name="to" value="<%= range.to %>" required></label>
+  <button type="submit" class="btn btn-primary">Xem</button>
+  <a class="btn" href="/reports/performance?from=<%= week.from %>&to=<%= week.to %>">Tuần này</a>
+  <a class="btn" href="/reports/performance?from=<%= month.from %>&to=<%= month.to %>">Tháng này</a>
+  <a class="btn" href="/export/performance?from=<%= range.from %>&to=<%= range.to %>">Xuất Excel</a>
+</form>
+<p class="muted">Tính trên các việc có hạn từ <%= fmtDate(range.from) %> đến <%= fmtDate(range.to) %>. Bấm tiêu đề cột để sắp xếp.</p>
+<% const col = function (key, label) { return '<th><a href="/reports/performance?from=' + range.from + '&to=' + range.to + '&sort=' + key + '">' + label + (sort === key ? ' ▼' : '') + '</a></th>'; }; %>
+<div class="table-wrap"><table class="table">
+  <thead><tr><th>STT</th><%- col('full_name', 'Họ và tên') %><%- col('assigned', 'Số việc giao') %><%- col('completed', 'Hoàn thành') %><%- col('on_time', 'Đúng hạn') %><%- col('overdue', 'Quá hạn') %><%- col('rate', 'Tỷ lệ đúng hạn') %></tr></thead>
+  <tbody>
+  <% if (!rows.length) { %><tr><td colspan="7" class="muted">Không có dữ liệu trong khoảng thời gian này.</td></tr><% } %>
+  <% rows.forEach(function (r, i) { %>
+    <tr><td><%= i + 1 %></td><td><%= r.full_name %></td><td><%= r.assigned %></td><td><%= r.completed %></td><td><%= r.on_time %></td><td><%= r.overdue %></td><td><%= Math.round(r.rate * 100) %>%</td></tr>
+  <% }) %>
+  </tbody>
+</table></div>

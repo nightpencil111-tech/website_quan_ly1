@@ -1,2 +1,72 @@
 <h1>Tổng quan</h1>
-<p>Chào đồng chí <strong><%= user.full_name %></strong>.</p>
+<p>Chào đồng chí <strong><%= user.full_name %></strong>.<% if (user.role === 'member') { %> Dưới đây là số liệu công việc của đồng chí.<% } %></p>
+
+<%
+const c = stats.counts;
+const cards = [
+  { label: 'Tổng số', n: c.total, href: '/tasks' },
+  { label: 'Chưa làm', n: c.chua_lam, href: '/tasks?status=chua_lam' },
+  { label: 'Đang làm', n: c.dang_lam, href: '/tasks?status=dang_lam' },
+  { label: 'Chờ duyệt', n: c.cho_duyet, href: '/tasks?status=cho_duyet' },
+  { label: 'Quá hạn', n: c.overdue, href: '/tasks?overdue=1', warn: c.overdue > 0 },
+  { label: 'Hoàn thành tuần này', n: c.done_this_week, href: '/tasks?status=hoan_thanh' },
+];
+%>
+<div class="stat-grid">
+  <% cards.forEach(function (k) { %>
+    <a class="stat-card<%= k.warn ? ' warn' : '' %>" href="<%= k.href %>"><span class="stat-n"><%= k.n %></span><span class="stat-l"><%= k.label %></span></a>
+  <% }) %>
+</div>
+
+<% if (stats.overload) { %>
+<section class="panel <%= stats.overload.length ? 'panel-warn' : '' %>">
+  <h2>Cảnh báo quá tải</h2>
+  <% if (!stats.overload.length) { %><p class="muted">Hiện chưa có đồng chí nào quá tải.</p><% } else { %>
+  <ul>
+    <% stats.overload.forEach(function (o) { %>
+      <li><strong><%= o.full_name %></strong>: đang có <%= o.open_count %> việc chưa hoàn thành<% o.same_day.forEach(function (d) { %>; <%= d.count %> việc cùng hạn <%= fmtDate(d.date) %><% }) %>.</li>
+    <% }) %>
+  </ul>
+  <% } %>
+</section>
+<% } %>
+
+<div class="chart-grid">
+  <section class="panel">
+    <h2>Công việc theo lĩnh vực</h2>
+    <% if (!stats.byCategory.length) { %><p class="muted">Chưa có dữ liệu.</p><% } else { %>
+    <div class="chart-box"><canvas id="chart-category" aria-label="Biểu đồ công việc theo lĩnh vực" role="img"></canvas></div>
+    <% } %>
+  </section>
+  <% if (stats.byPerson) { %>
+  <section class="panel">
+    <h2>Công việc theo người thực hiện</h2>
+    <% if (!stats.byPerson.length) { %><p class="muted">Chưa có dữ liệu.</p><% } else { %>
+    <div class="chart-box"><canvas id="chart-person" aria-label="Biểu đồ công việc theo người" role="img"></canvas></div>
+    <% } %>
+  </section>
+  <% } %>
+</div>
+
+<section class="panel">
+  <h2>Sắp đến hạn (7 ngày tới)</h2>
+  <% if (!stats.upcoming.length) { %><p class="muted">Không có việc nào sắp đến hạn.</p><% } else { %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Công việc</th><th>Người thực hiện</th><th>Hạn</th><th>Trạng thái</th></tr></thead>
+    <tbody>
+    <% stats.upcoming.forEach(function (t) { %>
+      <tr>
+        <td><a href="/tasks/<%= t.id %>"><%= t.title %></a></td>
+        <td><%= t.assignees.map(function (a) { return a.full_name; }).join(', ') %></td>
+        <td><%= fmtDate(t.due_date) %></td>
+        <td><%= LABELS.status[t.status] %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</section>
+
+<script type="application/json" id="chart-data"><%- chartData %></script>
+<script src="/vendor/chart.umd.js"></script>
+<script src="/js/dashboard.js"></script>

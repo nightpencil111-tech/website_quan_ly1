@@ -15,9 +15,10 @@
   <button type="submit" class="btn btn-primary">Lọc</button>
   <a class="btn" href="/tasks">Bỏ lọc</a>
 </form>
-<%# Task 9 gắn nút "Xuất Excel" tới /export/tasks?<query> tại đây %>
-<div id="export-slot" data-query="<%= query %>"></div>
-<% if (user.role !== 'member') { %><p><a class="btn btn-primary" href="/tasks/new">Giao việc mới</a></p><% } %>
+<p>
+  <% if (user.role !== 'member') { %><a class="btn btn-primary" href="/tasks/new">Giao việc mới</a> <% } %>
+  <a class="btn" id="export-excel" href="/export/tasks<%= query ? '?' + query : '' %>">Xuất Excel</a>
+</p>
 <div class="table-wrap">
 <table class="table">
   <thead><tr><th>Tiêu đề</th><th>Lĩnh vực</th><th>Người thực hiện</th><th>Hạn</th><th>Trạng thái</th><th>Tiến độ</th></tr></thead>
