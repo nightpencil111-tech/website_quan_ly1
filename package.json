@@ -5,7 +5,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node --no-warnings=ExperimentalWarning src/server.js",
-    "test": "node --no-warnings=ExperimentalWarning --test \"test/*.test.js\""
+    "test": "node --no-warnings=ExperimentalWarning --test \"test/*.test.js\"",
+    "demo": "node --no-warnings=ExperimentalWarning scripts/demo-data.js",
+    "screenshots": "node --no-warnings=ExperimentalWarning scripts/screenshots.js"
   },
   "engines": {
     "node": ">=22.13"
