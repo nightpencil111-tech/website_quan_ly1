@@ -40,6 +40,7 @@ function createApp({ dbPath }) {
   app.use(require('./routes/dashboard')(db));
   app.use(require('./routes/people')(db));
   app.use(require('./routes/tasks')(db));
+  app.use(require('./routes/templates')(db));
   app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {
@@ -62,6 +63,13 @@ if (require.main === module) {
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const { app, db } = createApp({ dbPath });
   seed(db);
+  const { generateDue } = require('./services/recurring');
+  const { today } = require('./util/date');
+  const runRecurring = () => {
+    try { generateDue(db, today()); } catch (e) { console.error('Lỗi sinh việc định kỳ:', e); }
+  };
+  runRecurring();
+  setInterval(runRecurring, 3600 * 1000).unref();
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, '0.0.0.0', () => {
     console.log(`Hệ thống đã chạy. Mở trình duyệt và truy cập: http://localhost:${port}`);

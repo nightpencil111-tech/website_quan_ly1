@@ -1,0 +1,61 @@
+<h1>Mẫu công việc &amp; Việc định kỳ</h1>
+<nav class="tabs" aria-label="Mẫu và việc định kỳ">
+  <a href="/templates" class="<%= tab === 'templates' ? 'active' : '' %>">Mẫu công việc</a>
+  <a href="/templates?tab=recurring" class="<%= tab === 'recurring' ? 'active' : '' %>">Việc định kỳ</a>
+</nav>
+<% if (msg) { %><div class="alert alert-info"><%= msg %></div><% } %>
+<% if (tab === 'templates') { %>
+  <p><a class="btn btn-primary" href="/templates/new">Thêm mẫu</a></p>
+  <table class="table">
+    <thead><tr><th>Tên mẫu</th><th>Lĩnh vực</th><th>Số đầu việc</th><th></th></tr></thead>
+    <tbody>
+    <% templates.forEach(function (t) { %>
+      <tr>
+        <td><strong><%= t.name %></strong><% if (t.description) { %><br><small><%= t.description %></small><% } %></td>
+        <td><%= t.category ? LABELS.category[t.category] : '' %></td>
+        <td><%= t.items.length %></td>
+        <td>
+          <a class="btn btn-primary" href="/tasks/new?template=<%= t.id %>">Giao theo mẫu</a>
+          <a class="btn" href="/templates/<%= t.id %>/edit">Sửa</a>
+          <form method="post" action="/templates/<%= t.id %>/delete" class="inline" onsubmit="return confirm('Xóa mẫu này?');">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <button type="submit" class="btn">Xóa</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!templates.length) { %><tr><td colspan="4">Chưa có mẫu công việc nào.</td></tr><% } %>
+    </tbody>
+  </table>
+<% } else { %>
+  <p>
+    <a class="btn btn-primary" href="/templates/recurring/new">Thêm việc định kỳ</a>
+    <form method="post" action="/templates/generate" class="inline">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="btn">Chạy sinh việc ngay</button>
+    </form>
+  </p>
+  <table class="table">
+    <thead><tr><th>Tiêu đề</th><th>Lặp lại</th><th>Báo trước</th><th>Người thực hiện</th><th>Kỳ tới</th><th>Trạng thái</th><th></th></tr></thead>
+    <tbody>
+    <% rules.forEach(function (x) { %>
+      <tr>
+        <td><strong><%= x.title %></strong><br><small><%= LABELS.category[x.category] %> · <%= LABELS.priority[x.priority] %></small></td>
+        <td><%= FREQ[x.frequency] %>, <%= x.frequency === 'tuan' ? WEEKDAYS[x.day_value] : 'ngày ' + x.day_value %></td>
+        <td><%= x.lead_days %> ngày</td>
+        <td><%= x.assignee_names %></td>
+        <td><%= x.next ? fmtDate(x.next) : '' %></td>
+        <td><%= x.active ? 'Đang chạy' : 'Tạm dừng' %></td>
+        <td>
+          <a class="btn" href="/templates/recurring/<%= x.id %>/edit">Sửa</a>
+          <form method="post" action="/templates/recurring/<%= x.id %>/delete" class="inline" onsubmit="return confirm('Xóa quy tắc này?');">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <button type="submit" class="btn">Xóa</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    <% if (!rules.length) { %><tr><td colspan="7">Chưa có việc định kỳ nào.</td></tr><% } %>
+    </tbody>
+  </table>
+<% } %>

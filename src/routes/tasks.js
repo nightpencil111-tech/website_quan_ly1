@@ -3,6 +3,7 @@ const { requireLogin, requireRole, forbid } = require('../auth');
 const tasks = require('../services/tasks');
 const users = require('../services/users');
 const smart = require('../services/smart');
+const templates = require('../services/templates');
 const { today } = require('../util/date');
 const { AppError } = require('../util/errors');
 const { LABELS } = require('../util/text');
@@ -37,11 +38,12 @@ function parseFilters(query) {
   return f;
 }
 
-function formData(body) {
+function formData(db, body) {
   const b = clean(body);
   const data = {};
   for (const k of ['title', 'description', 'category', 'priority', 'due_date']) if (b[k] !== undefined) data[k] = b[k];
   data.assignee_ids = parseIds(b.assignee_ids);
+  if (/^\d+$/.test(String(b.template_id ?? '')) && db.prepare('SELECT 1 FROM task_templates WHERE id = ?').get(Number(b.template_id))) data.template_id = Number(b.template_id);
   if (typeof b.checklist === 'string') data.checklist = b.checklist.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   return data;
 }
@@ -122,17 +124,25 @@ module.exports = (db) => {
   });
 
   r.get('/tasks/new', requireRole(...MANAGERS), (req, res) => {
-    res.render('tasks/form', formCtx({
-      title: 'Giao việc mới', target: null,
-      form: { category: 'khac', priority: 'thuong', assignee_ids: [] },
-    }));
+    const form = { category: 'khac', priority: 'thuong', assignee_ids: [] };
+    let checklistText = '';
+    const tid = /^\d+$/.test(String(req.query.template ?? '')) ? Number(req.query.template) : null;
+    const tpl = tid ? templates.getTemplate(db, tid) : null;
+    if (tpl) {
+      form.title = tpl.name;
+      form.description = tpl.description || '';
+      if (tpl.category) form.category = tpl.category;
+      form.template_id = tpl.id;
+      checklistText = tpl.items.join('\n');
+    }
+    res.render('tasks/form', formCtx({ title: 'Giao việc mới', target: null, form, checklistText }));
   });
 
   r.post('/tasks', requireRole(...MANAGERS), wrap((req, res) => {
-    const id = tasks.createTask(db, formData(req.body), req.user.id);
+    const id = tasks.createTask(db, formData(db, req.body), req.user.id);
     res.redirect(`/tasks/${id}`);
   }, (req, res, e) => {
-    const d = formData(req.body);
+    const d = formData(db, req.body);
     res.status(400).render('tasks/form', formCtx({
       title: 'Giao việc mới', target: null, error: e.message,
       form: { ...d, assignee_ids: d.assignee_ids }, checklistText: (d.checklist || []).join('\n'),
@@ -158,12 +168,12 @@ module.exports = (db) => {
   });
 
   r.post('/tasks/:id', requireRole(...MANAGERS), loadTask, wrap((req, res) => {
-    const d = formData(req.body);
+    const d = formData(db, req.body);
     delete d.checklist;
     tasks.updateTask(db, req.task.id, d, req.user);
     res.redirect(`/tasks/${req.task.id}`);
   }, (req, res, e) => {
-    const d = formData(req.body);
+    const d = formData(db, req.body);
     res.status(400).render('tasks/form', formCtx({
       title: 'Sửa công việc', target: req.task, error: e.message, extraPeople: req.task.assignees.filter((a) => !a.active),
       form: { ...d },

@@ -3,6 +3,7 @@
 <% const selected = (form.assignee_ids || []).map(Number); %>
 <form method="post" action="<%= target ? '/tasks/' + target.id : '/tasks' %>" class="form-card wide" id="task-form">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (!target && form.template_id) { %><input type="hidden" name="template_id" value="<%= form.template_id %>"><% } %>
   <label>Tiêu đề <input type="text" name="title" value="<%= form.title || '' %>" required maxlength="200"></label>
   <label>Nội dung <textarea name="description" rows="4"><%= form.description || '' %></textarea></label>
   <label>Lĩnh vực

@@ -1,0 +1,16 @@
+<h1><%= target ? 'Sửa mẫu công việc' : 'Thêm mẫu công việc' %></h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="post" action="<%= target ? '/templates/' + target.id : '/templates' %>" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Tên mẫu <input type="text" name="name" value="<%= form.name || '' %>" required maxlength="200"></label>
+  <label>Lĩnh vực
+    <select name="category">
+      <option value="">(Không chọn)</option>
+      <% Object.keys(LABELS.category).forEach(function (k) { %><option value="<%= k %>" <%= form.category === k ? 'selected' : '' %>><%= LABELS.category[k] %></option><% }) %>
+    </select></label>
+  <label>Mô tả <textarea name="description" rows="3"><%= form.description || '' %></textarea></label>
+  <label>Các đầu việc (mỗi dòng một mục)
+    <textarea name="items" rows="8"><%= form.items || '' %></textarea></label>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="/templates">Hủy</a>
+</form>

@@ -143,7 +143,33 @@ function openDb(file) {
   return db;
 }
 
+const SEED_TEMPLATES = [
+  {
+    name: 'Tổ chức kỷ niệm ngày thành lập QĐND 22/12',
+    category: 'giao_duc_ct',
+    description: 'Tổ chức các hoạt động kỷ niệm ngày thành lập Quân đội nhân dân Việt Nam 22/12.',
+    items: [
+      'Xây dựng kế hoạch', 'Phân công lực lượng', 'Chuẩn bị hội trường, khánh tiết',
+      'Nội dung tọa đàm/nói chuyện truyền thống', 'Văn nghệ', 'Thể thao', 'Tin bài truyền thanh', 'Tổng hợp báo cáo',
+    ],
+  },
+  {
+    name: 'Sinh hoạt chi bộ thường kỳ',
+    category: 'cong_tac_dang',
+    description: 'Chuẩn bị và tiến hành sinh hoạt chi bộ thường kỳ.',
+    items: ['Dự thảo nghị quyết', 'Báo cáo kết quả tháng', 'Chuẩn bị điều hành', 'Hoàn thiện biên bản'],
+  },
+];
+
+function seedTemplates(db) {
+  const { c } = db.prepare('SELECT COUNT(*) AS c FROM task_templates').get();
+  if (c > 0) return;
+  const ins = db.prepare('INSERT INTO task_templates (name, category, description, items_json) VALUES (?, ?, ?, ?)');
+  for (const t of SEED_TEMPLATES) ins.run(t.name, t.category, t.description, JSON.stringify(t.items));
+}
+
 function seed(db) {
+  seedTemplates(db);
   const { c } = db.prepare('SELECT COUNT(*) AS c FROM users').get();
   if (c > 0) return;
   db.exec('BEGIN');
