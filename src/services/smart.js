@@ -73,7 +73,7 @@ function suggestAssignees(db, { category, due_date } = {}, today, limit = 5) {
 }
 
 /** Cảnh báo quá tải: số việc mở > ngưỡng hoặc ≥ 3 việc mở cùng hạn. Chỉ tính người đang hoạt động. */
-function overloadWarnings(db, today) { // eslint-disable-line no-unused-vars
+function overloadWarnings(db) {
   const threshold = getOverloadThreshold(db);
   const rows = db.prepare(
     `SELECT u.id AS user_id, u.full_name, t.due_date FROM users u

@@ -89,13 +89,13 @@ test('overloadWarnings: vượt ngưỡng và ≥3 việc cùng hạn', () => {
   mkUser(db, 'f');
   for (let i = 0; i < 6; i++) mk(db, mgr, [d.id], { due_date: `2026-12-${10 + i}` });
   for (let i = 0; i < 3; i++) mk(db, mgr, [e.id], { due_date: '2026-12-01' });
-  let w = smart.overloadWarnings(db, TODAY);
+  let w = smart.overloadWarnings(db);
   assert.deepEqual(w.map((x) => x.user_id).sort(), [d.id, e.id].sort());
   assert.deepEqual(w.find((x) => x.user_id === e.id).same_day, [{ date: '2026-12-01', count: 3 }]);
   assert.equal(w.find((x) => x.user_id === d.id).same_day.length, 0);
   assert.equal(w.find((x) => x.user_id === d.id).open_count, 6);
   users.setSetting(db, 'overload_threshold', '2');
-  w = smart.overloadWarnings(db, TODAY);
+  w = smart.overloadWarnings(db);
   assert.equal(w.find((x) => x.user_id === e.id).open_count, 3);
 });
 
@@ -160,6 +160,22 @@ test('HTTP: /api/suggest cần đăng nhập và quyền quản lý; /my dùng t
     assert.equal(j.ok, true);
     assert.ok(j.suggestions.length >= 1);
     assert.ok(!j.suggestions.some((s) => s.user_id === lk.id));
+    // 7 người thừa kế tải thấp + 1 người quá tải xếp ngoài top 5
+    const ids = [];
+    for (let i = 0; i < 6; i++) ids.push(mkUser(db, 'free' + i).id);
+    const heavy = mkUser(db, 'heavy');
+    for (let i = 0; i < 6; i++) mk(db, mgr, [heavy.id]);
+    r = await fetch(`${base}/api/suggest?category=khac`, { headers: { cookie: g.cookie } });
+    const j2 = await r.json();
+    assert.equal(j2.suggestions.length, 5);
+    assert.ok(!j2.suggestions.some((s) => s.user_id === heavy.id));
+    assert.ok(j2.overloaded_ids.includes(heavy.id));
+    assert.ok(!j2.overloaded_ids.includes(ids[0]));
+    r = await fetch(`${base}/api/suggest?category=__proto__`, { headers: { cookie: g.cookie } });
+    assert.equal(r.status, 200);
+    r = await fetch(`${base}/api/suggest?category=constructor`, { headers: { cookie: g.cookie } });
+    assert.equal(r.status, 200);
+    assert.equal((await r.json()).ok, true);
     r = await fetch(`${base}/my`, { headers: { cookie: g.cookie } });
     assert.equal(r.status, 200);
     assert.match(await r.text(), /Việc cần làm hôm nay/);

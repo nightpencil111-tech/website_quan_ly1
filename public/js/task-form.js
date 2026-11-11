@@ -34,15 +34,18 @@
     });
   }
 
+  function setOverloaded(ids) {
+    overloaded = {};
+    (ids || []).forEach(function (id) { overloaded[id] = true; });
+  }
+
   function render(list) {
     box.textContent = '';
-    overloaded = {};
-    if (!list.length) return;
+    if (!list.length) { refreshWarnings(); return; }
     box.appendChild(el('div', 'muted', 'Gợi ý người thực hiện (bấm để chọn):'));
     var wrap = el('div', 'suggest-cards');
     wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0';
     list.forEach(function (s) {
-      if (s.overloaded) overloaded[s.user_id] = true;
       var card = el('button', 'suggest-card');
       card.type = 'button';
       card.style.cssText = 'text-align:left;border:1px solid #9aa88a;border-radius:6px;background:#f4f7ef;padding:6px 10px;cursor:pointer';
@@ -64,8 +67,8 @@
     var url = '/api/suggest?category=' + encodeURIComponent(cat.value) + '&due_date=' + encodeURIComponent(due.value || '');
     fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : { suggestions: [] }; })
-      .then(function (j) { if (mine === seq) render(j.suggestions || []); })
-      .catch(function () { if (mine === seq) box.textContent = ''; });
+      .then(function (j) { if (mine === seq) { setOverloaded(j.overloaded_ids); render(j.suggestions || []); } })
+      .catch(function () { if (mine === seq) { setOverloaded([]); box.textContent = ''; refreshWarnings(); } });
   }
 
   cat.addEventListener('change', load);

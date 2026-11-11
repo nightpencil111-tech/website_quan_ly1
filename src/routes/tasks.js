@@ -227,9 +227,14 @@ module.exports = (db) => {
 
   r.get('/api/suggest', requireRole(...MANAGERS), (req, res) => {
     const q = clean(req.query);
-    const category = typeof q.category === 'string' && LABELS.category[q.category] ? q.category : 'khac';
+    const category = typeof q.category === 'string' && Object.hasOwn(LABELS.category, q.category) ? q.category : 'khac';
     const due = typeof q.due_date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q.due_date) ? q.due_date : undefined;
-    res.json({ ok: true, suggestions: smart.suggestAssignees(db, { category, due_date: due }, today()) });
+    const all = smart.suggestAssignees(db, { category, due_date: due }, today(), Infinity);
+    res.json({
+      ok: true,
+      suggestions: all.slice(0, 5),
+      overloaded_ids: all.filter((s) => s.overloaded).map((s) => s.user_id), // mọi ứng viên, không chỉ top 5
+    });
   });
 
   return r;
