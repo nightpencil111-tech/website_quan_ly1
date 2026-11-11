@@ -1,0 +1,53 @@
+<%
+const WD = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ nhật'];
+const sel = (d) => addForm && addForm.start_date === d;
+%>
+<div class="cal-head">
+  <a class="btn" href="/calendar?y=<%= prev.y %>&m=<%= prev.m %>" aria-label="Tháng trước">&lsaquo;</a>
+  <h1>Tháng <%= m %>/<%= y %></h1>
+  <a class="btn" href="/calendar?y=<%= next.y %>&m=<%= next.m %>" aria-label="Tháng sau">&rsaquo;</a>
+  <a class="btn" href="/calendar">Hôm nay</a>
+</div>
+<div class="cal-legend">
+  <% Object.keys(EVENT_TYPES).forEach(function (k) { %><span class="chip ev-<%= k %>"><%= EVENT_TYPES[k] %></span><% }) %>
+  <span class="chip chip-task">Hạn chót công việc</span>
+</div>
+
+<% if (addForm) { %>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="post" action="/calendar/events" class="form-card wide cal-add">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Thêm sự kiện</h2>
+    <label>Tiêu đề <input type="text" name="title" value="<%= addForm.title || '' %>" required maxlength="200"></label>
+    <label>Loại
+      <select name="type">
+        <% Object.keys(EVENT_TYPES).forEach(function (k) { %><option value="<%= k %>" <%= addForm.type === k ? 'selected' : '' %>><%= EVENT_TYPES[k] %></option><% }) %>
+      </select></label>
+    <label>Từ ngày <input type="date" name="start_date" value="<%= addForm.start_date %>" required></label>
+    <label>Đến ngày (bỏ trống nếu chỉ một ngày) <input type="date" name="end_date" value="<%= addForm.end_date || '' %>"></label>
+    <label>Ghi chú <textarea name="description" rows="2"><%= addForm.description || '' %></textarea></label>
+    <button type="submit" class="btn btn-primary">Lưu sự kiện</button>
+    <a class="btn" href="/calendar?y=<%= y %>&m=<%= m %>">Hủy</a>
+  </form>
+<% } %>
+
+<div class="cal-scroll">
+  <div class="cal">
+    <% WD.forEach(function (w) { %><div class="cal-wd"><%= w %></div><% }) %>
+    <% view.weeks.forEach(function (week) { week.forEach(function (d) { %>
+      <div class="cal-cell<%= d.inMonth ? '' : ' out' %><%= d.isToday ? ' today' : '' %><%= sel(d.date) ? ' selected' : '' %>">
+        <div class="cal-day">
+          <span class="cal-num"><%= Number(d.date.slice(8)) %><% if (Number(d.date.slice(8)) === 1) { %>/<%= Number(d.date.slice(5, 7)) %><% } %></span>
+          <span class="cal-wd-m"><%= WD[(week.indexOf(d))] %></span>
+          <% if (canEdit) { %><a class="cal-plus" href="/calendar?y=<%= y %>&m=<%= m %>&add=<%= d.date %>" title="Thêm sự kiện ngày <%= fmtDate(d.date) %>" aria-label="Thêm sự kiện ngày <%= fmtDate(d.date) %>">+</a><% } %>
+        </div>
+        <% d.events.forEach(function (e) { %>
+          <a class="chip ev-<%= EVENT_TYPES[e.type] ? e.type : 'khac' %>" href="/calendar/events/<%= e.id %>" title="<%= EVENT_TYPES[e.type] || 'Khác' %>"><%= e.title %></a>
+        <% }) %>
+        <% d.tasks.forEach(function (t) { %>
+          <a class="chip chip-task<%= t.status === 'hoan_thanh' ? ' done' : '' %><%= t.overdue ? ' overdue' : '' %>" href="/tasks/<%= t.id %>" title="Hạn chót công việc"><%= t.title %></a>
+        <% }) %>
+      </div>
+    <% }) }) %>
+  </div>
+</div>

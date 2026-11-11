@@ -113,3 +113,39 @@ body.no-nav .content { max-width: 480px; margin: 40px auto; }
 .kanban-list { min-height: 120px; }
 .kanban-card { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; cursor: grab; font-size: 14px; }
 .kanban-card.dragging { opacity: .5; }
+
+/* Lịch công tác */
+.cal-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.cal-head h1 { margin: 0; font-size: 24px; min-width: 170px; text-align: center; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.cal-add { margin-bottom: 16px; }
+.cal-scroll { overflow-x: auto; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); min-width: 840px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); background: #fff; }
+.cal-wd { background: #eef1e6; font-weight: 600; font-size: 14px; padding: 6px 8px; text-align: center; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.cal-cell { min-height: 96px; padding: 4px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-width: 0; }
+.cal-cell.out { background: #f6f6f2; color: #999; }
+.cal-cell.today { background: #fff6d6; outline: 2px solid #e0a800; outline-offset: -2px; }
+.cal-cell.selected { background: #e4ead8; }
+.cal-day { display: flex; align-items: center; justify-content: space-between; font-size: 13px; margin-bottom: 2px; }
+.cal-num { font-weight: 600; }
+.cal-wd-m { display: none; color: var(--muted); font-size: 12px; margin-right: auto; margin-left: 8px; }
+.cal-plus { text-decoration: none; font-weight: 700; color: var(--green); padding: 0 6px; border-radius: 3px; }
+.cal-plus:hover { background: #e4ead8; }
+.chip { display: block; margin: 2px 0; padding: 1px 6px; border-radius: 3px; font-size: 12px; line-height: 1.4; color: #fff; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #6b7280; }
+.cal-legend .chip { display: inline-block; margin: 0; }
+.ev-sinh_hoat_chi_bo { background: #b71c1c; }
+.ev-hoc_chinh_tri { background: #1565c0; }
+.ev-ngay_le { background: #e65100; }
+.ev-hoi_nghi { background: #6a1b9a; }
+.ev-khac { background: #607d8b; }
+.chip-task { background: #e4ead8; color: var(--green-dark); border: 1px solid #b9c7a2; }
+.chip-task.overdue { background: #fbeaea; color: var(--danger); border-color: #e6bcbc; }
+.chip-task.done { text-decoration: line-through; opacity: .65; }
+@media (max-width: 768px) {
+  .cal { display: block; min-width: 0; border: 0; background: transparent; }
+  .cal-wd { display: none; }
+  .cal-cell { min-height: 0; margin-bottom: 6px; border: 1px solid var(--border); background: #fff; }
+  .cal-cell.out { display: none; }
+  .cal-wd-m { display: inline; }
+  .chip { white-space: normal; font-size: 14px; padding: 4px 8px; }
+}
