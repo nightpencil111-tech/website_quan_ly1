@@ -60,7 +60,8 @@ npx playwright install chromium
 ## 5. Sao lưu và khôi phục
 
 - **Sao lưu:** đăng nhập bằng `admin`, vào **Sao lưu dữ liệu** và bấm tải về; hoặc dừng ứng dụng (Ctrl+C) rồi chép tệp `data/data.db` (kèm `data.db-wal`, `data.db-shm` nếu có).
-- **Khôi phục:** dừng ứng dụng, thay tệp `data/data.db` bằng bản sao lưu, khởi động lại.
+- **Khôi phục:** (1) dừng ứng dụng (Ctrl+C); (2) xóa `data/data.db-wal` và `data/data.db-shm` nếu có; (3) đổi tên bản sao lưu tải về (dạng `saoluu-YYYY-MM-DD.db`) thành `data.db` và chép đè vào thư mục `data/`; (4) khởi động lại ứng dụng. Không bỏ qua bước 2, nếu không dữ liệu cũ có thể bị trộn lẫn hoặc báo hỏng.
+- Ứng dụng luôn dùng `data/data.db` nằm cạnh thư mục ứng dụng, dù khởi động từ thư mục nào (có thể đổi bằng biến `DB_PATH`). Dừng bằng Ctrl+C để dữ liệu được ghi gọn.
 - Bản sao lưu chứa cả mật khẩu đã băm của mọi tài khoản: cất giữ ở nơi an toàn, không gửi qua kênh không được phép.
 
 ## 6. Tự chạy khi bật máy (tùy chọn)
@@ -85,7 +86,7 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 ## 9. Chức năng
 
 - Giao việc kèm lĩnh vực, mức ưu tiên (thường/gấp/hỏa tốc), hạn, nhiều người thực hiện, checklist; gợi ý người thực hiện và cảnh báo quá tải.
-- Danh sách có lọc, tìm kiếm tiếng Việt (có dấu hoặc không dấu), bảng Kanban kéo thả, "Việc của tôi" sắp theo mức khẩn.
+- Danh sách có lọc, tìm kiếm tiếng Việt (có dấu hoặc không dấu), bảng Kanban kéo thả (kéo thả dành cho chuột; trên màn hình cảm ứng như Surface, hãy mở công việc và bấm các nút chuyển trạng thái), "Việc của tôi" sắp theo mức khẩn.
 - Mẫu công việc và việc định kỳ (hằng tuần/tháng) tự sinh việc.
 - Lịch công tác theo tháng, kết hợp hạn chót công việc.
 - Bảng tổng quan, báo cáo kết quả theo kỳ (sao chép/xuất Excel), thống kê hiệu suất, xuất danh sách việc ra Excel.

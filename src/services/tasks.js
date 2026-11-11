@@ -33,12 +33,13 @@ function tx(db, fn) {
   }
 }
 
-function checkAssignees(db, ids) {
+// allowInactive: id người đã được giao việc này, được giữ nguyên dù tài khoản đã bị khóa (R11).
+function checkAssignees(db, ids, allowInactive = []) {
   if (!Array.isArray(ids) || ids.length === 0) throw new AppError('Phải chọn ít nhất một người thực hiện');
   const uniq = [...new Set(ids.map(Number))];
   for (const id of uniq) {
     const u = Number.isInteger(id) && db.prepare('SELECT active FROM users WHERE id = ?').get(id);
-    if (!u || !u.active) throw new AppError('Người thực hiện không tồn tại hoặc đã bị khóa');
+    if (!u || (!u.active && !allowInactive.includes(id))) throw new AppError('Người thực hiện không tồn tại hoặc đã bị khóa');
   }
   return uniq;
 }
@@ -80,7 +81,8 @@ function updateTask(db, id, fields, actor) {
     priority: cur.priority, due_date: cur.due_date, ...fields,
   };
   const title = validateFields(f);
-  const ids = fields.assignee_ids !== undefined ? checkAssignees(db, fields.assignee_ids) : null;
+  const currentIds = db.prepare('SELECT user_id FROM task_assignees WHERE task_id = ?').all(id).map((r) => r.user_id);
+  const ids = fields.assignee_ids !== undefined ? checkAssignees(db, fields.assignee_ids, currentIds) : null;
   tx(db, () => {
     db.prepare('UPDATE tasks SET title=?, description=?, category=?, priority=?, due_date=? WHERE id=?')
       .run(title, f.description ?? null, f.category, f.priority, f.due_date, id);
@@ -142,6 +144,8 @@ function listTasks(db, filters = {}, today = vnToday()) {
   }
   if (filters.from) { where.push('t.due_date >= ?'); args.push(filters.from); }
   if (filters.to) { where.push('t.due_date <= ?'); args.push(filters.to); }
+  if (filters.done_from) { where.push('t.completed_at >= ?'); args.push(filters.done_from); }
+  if (filters.done_to) { where.push('t.completed_at <= ?'); args.push(filters.done_to); }
   if (filters.overdue) { where.push("t.status != 'hoan_thanh' AND t.due_date < ?"); args.push(today); }
   const rows = db.prepare(
     `SELECT t.*,

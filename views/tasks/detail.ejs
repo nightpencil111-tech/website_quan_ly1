@@ -62,7 +62,7 @@
   <h2>Trao đổi</h2>
   <ul class="comments">
   <% task.comments.forEach(function (c) { %>
-    <li><strong><%= c.full_name || 'Hệ thống' %></strong> <span class="muted"><%= c.created_at %> (UTC)</span><br><%= c.content %></li>
+    <li><strong><%= c.full_name || 'Hệ thống' %></strong> <span class="muted"><%= fmtDateTime(c.created_at) %></span><br><%= c.content %></li>
   <% }) %>
   <% if (!task.comments.length) { %><li class="muted">Chưa có trao đổi.</li><% } %>
   </ul>

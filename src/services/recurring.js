@@ -105,25 +105,26 @@ function generateDue(db, today) {
   let count = 0;
   const actor = systemActorId(db);
   for (const rule of listRules(db)) {
-    if (!rule.active) continue;
-    const occ = nextOccurrence(rule, today);
-    if (daysBetween(today, occ) > rule.lead_days) continue;
-    const exists = db.prepare('SELECT 1 FROM tasks WHERE recurring_id = ? AND due_date = ?').get(rule.id, occ);
-    if (exists) continue;
-    const assignees = rule.assignee_ids.filter((uid) =>
-      db.prepare('SELECT 1 FROM users WHERE id = ? AND active = 1').get(uid));
-    if (assignees.length === 0) continue;
     try {
+      if (!rule.active) continue;
+      const occ = nextOccurrence(rule, today);
+      if (daysBetween(today, occ) > rule.lead_days) continue;
+      if (rule.last_generated && rule.last_generated >= occ) continue; // đã sinh kỳ này (kể cả khi việc đã bị xóa/đổi hạn)
+      const exists = db.prepare('SELECT 1 FROM tasks WHERE recurring_id = ? AND due_date = ?').get(rule.id, occ);
+      if (exists) continue;
+      const assignees = rule.assignee_ids.filter((uid) =>
+        db.prepare('SELECT 1 FROM users WHERE id = ? AND active = 1').get(uid));
+      if (assignees.length === 0) continue;
       tasks.createTask(db, {
         title: rule.title, description: rule.description, category: rule.category, priority: rule.priority,
         due_date: occ, assignee_ids: assignees, recurring_id: rule.id,
       }, actor);
+      db.prepare('UPDATE recurring_rules SET last_generated = ? WHERE id = ?').run(occ, rule.id);
+      count += 1;
     } catch (e) {
-      if (e instanceof AppError) continue; // quy tắc hỏng không làm dừng các quy tắc khác
-      throw e;
+      // một quy tắc hỏng không làm dừng các quy tắc khác
+      console.error(`Lỗi sinh việc định kỳ cho quy tắc ${rule.id}:`, e);
     }
-    db.prepare('UPDATE recurring_rules SET last_generated = ? WHERE id = ?').run(occ, rule.id);
-    count += 1;
   }
   return count;
 }

@@ -60,8 +60,9 @@ module.exports = (db) => {
     evForm(res, 200, e, e, null);
   });
   r.post('/calendar/events/:id(\\d+)', mgr, wrap((req, res) => {
-    events.updateEvent(db, Number(req.params.id), req.body, req.user.id);
-    const s = isoDate(req.body.start_date);
+    const id = Number(req.params.id);
+    events.updateEvent(db, id, req.body, req.user.id);
+    const s = events.getEvent(db, id).start_date;
     res.redirect(`/calendar?y=${s.slice(0, 4)}&m=${Number(s.slice(5, 7))}`);
   }, (req, res, e) => {
     const t = events.getEvent(db, Number(req.params.id));
@@ -70,9 +71,10 @@ module.exports = (db) => {
   }));
   r.post('/calendar/events/:id(\\d+)/delete', mgr, wrap((req, res) => {
     const e = events.getEvent(db, Number(req.params.id));
+    if (!e) return notFound(res);
     events.deleteEvent(db, Number(req.params.id), req.user.id);
     res.redirect(`/calendar?y=${e.start_date.slice(0, 4)}&m=${Number(e.start_date.slice(5, 7))}`);
-  }, (req, res, e) => res.redirect('/calendar?msg=' + encodeURIComponent(e.message))));
+  }, (req, res) => res.redirect('/calendar')));
 
   return r;
 };

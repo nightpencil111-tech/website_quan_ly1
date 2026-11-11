@@ -12,6 +12,7 @@ function createApp({ dbPath }) {
   app.set('views', path.join(__dirname, '..', 'views'));
   app.locals.db = db;
   app.locals.fmtDate = require('./util/date').fmtDate;
+  app.locals.fmtDateTime = require('./util/date').fmtDateTime;
 
   // Khung giao diện: render view thành `body` rồi nhét vào views/layout.ejs.
   app.use((req, res, next) => {
@@ -25,9 +26,17 @@ function createApp({ dbPath }) {
     };
     next();
   });
+  // Giá trị mặc định cho giao diện, để trang lỗi vẫn hiển thị được khi body-parser lỗi trước loadSession.
+  app.use((req, res, next) => {
+    res.locals.user = null;
+    res.locals.csrf = '';
+    res.locals.path = req.path;
+    res.locals.flash = null;
+    next();
+  });
   app.use(express.static(path.join(__dirname, '..', 'public')));
-  app.use(express.urlencoded({ extended: false }));
-  app.use(express.json());
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+  app.use(express.json({ limit: '1mb' }));
   app.use(auth.loadSession(db));
   app.use((req, res, next) => {
     res.locals.path = req.path;
@@ -52,7 +61,24 @@ function createApp({ dbPath }) {
   app.use((err, req, res, next) => {
     console.error(err);
     if (res.headersSent) return;
-    res.status(500).render('error', { title: 'Lỗi hệ thống', code: 500, message: 'Hệ thống gặp sự cố, đồng chí vui lòng thử lại sau hoặc báo quản trị viên' });
+    let status = 500;
+    let message = 'Hệ thống gặp sự cố, đồng chí vui lòng thử lại sau hoặc báo quản trị viên';
+    if (err && err.type === 'entity.too.large') {
+      status = 413;
+      message = 'Nội dung quá dài, đồng chí vui lòng rút gọn rồi gửi lại';
+    } else if (err && err.status >= 400 && err.status < 500) {
+      status = 400;
+      message = 'Dữ liệu gửi lên không hợp lệ, đồng chí vui lòng kiểm tra lại';
+    }
+    const wantsJson = req.is('json') || /application\/json/.test(req.get('accept') || '');
+    if (wantsJson) return res.status(status).json({ ok: false, error: message });
+    res.status(status).render('error', { title: status === 500 ? 'Lỗi hệ thống' : 'Yêu cầu không hợp lệ', code: status, message }, (e, html) => {
+      if (e || !html) {
+        console.error(e);
+        return res.status(status).type('text/plain; charset=utf-8').send(message);
+      }
+      res.send(html);
+    });
   });
 
   return { app, db };
@@ -61,7 +87,7 @@ function createApp({ dbPath }) {
 module.exports = { createApp };
 
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || 'data/data.db';
+  const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'data.db');
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
   const { app, db } = createApp({ dbPath });
   seed(db);
@@ -73,8 +99,20 @@ if (require.main === module) {
   runRecurring();
   setInterval(runRecurring, 3600 * 1000).unref();
   const port = Number(process.env.PORT) || 3000;
-  app.listen(port, '0.0.0.0', () => {
+  const server = app.listen(port, '0.0.0.0', () => {
     console.log(`Hệ thống đã chạy. Mở trình duyệt và truy cập: http://localhost:${port}`);
     console.log('Các máy khác trong mạng nội bộ truy cập qua địa chỉ IP của máy này, cổng ' + port);
   });
+  // Tắt êm: đóng CSDL để WAL được ghi gọn vào data.db.
+  let closing = false;
+  const shutdown = () => {
+    if (closing) return;
+    closing = true;
+    server.close();
+    server.closeAllConnections?.();
+    try { db.close(); } catch (e) { console.error(e); }
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }

@@ -16,6 +16,7 @@ function parseFilters(query) {
   const f = {};
   for (const k of ['status', 'category', 'priority', 'q']) if (typeof q[k] === 'string') f[k] = q[k].trim();
   if (q.assignee_id && /^\d+$/.test(String(q.assignee_id))) f.assignee_id = Number(q.assignee_id);
+  for (const k of ['done_from', 'done_to']) if (typeof q[k] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q[k].trim())) f[k] = q[k].trim();
   if (q.overdue === '1') f.overdue = true;
   return f;
 }

@@ -1,5 +1,5 @@
 // Dữ liệu thử (toàn bộ hư cấu): npm run demo
-// Dùng DB_PATH (mặc định data/data.db). Từ chối chạy nếu DB đã có công việc, trừ khi có --force.
+// Dùng DB_PATH (mặc định data/data.db cạnh ứng dụng). Từ chối chạy nếu DB đã có công việc, trừ khi có --force.
 const { openDb, seed } = require('../src/db');
 const { hashPassword } = require('../src/auth');
 const { today, addDays, weekday } = require('../src/util/date');
@@ -147,7 +147,7 @@ function fillDemo(db, { force = false, log = () => {} } = {}) {
 module.exports = { fillDemo, PASSWORD };
 
 if (require.main === module) {
-  const dbPath = process.env.DB_PATH || 'data/data.db';
+  const dbPath = process.env.DB_PATH || require('node:path').join(__dirname, '..', 'data', 'data.db');
   const db = openDb(dbPath);
   try {
     const r = fillDemo(db, { force: process.argv.includes('--force'), log: console.log });

@@ -31,4 +31,13 @@ function fmtDate(d) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
 }
 
-module.exports = { today, addDays, daysBetween, weekday, fmtDate };
+// 'YYYY-MM-DD HH:MM:SS' (UTC, như SQLite lưu created_at) → 'dd/mm/yyyy HH:mm' giờ Việt Nam.
+function fmtDateTime(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s || '');
+  if (!m) return '';
+  const ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + VN_OFFSET_MS;
+  const iso = new Date(ms).toISOString();
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.slice(11, 16)}`;
+}
+
+module.exports = { today, addDays, daysBetween, weekday, fmtDate, fmtDateTime };

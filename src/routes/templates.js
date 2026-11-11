@@ -23,7 +23,13 @@ module.exports = (db) => {
     }
   };
   const notFound = (res) => res.status(404).render('error', { title: 'Không tìm thấy', code: 404, message: 'Không tìm thấy mục yêu cầu' });
-  const backTo = (res, tab, msg) => res.redirect(`/templates?tab=${tab}${msg ? '&msg=' + encodeURIComponent(msg) : ''}`);
+  // Thông báo chỉ qua mã, ánh xạ sang câu cố định (không phản chiếu văn bản tùy ý từ URL).
+  const backTo = (res, tab, code, n) => res.redirect(`/templates?tab=${tab}${code ? '&done=' + code : ''}${n !== undefined ? '&n=' + Number(n) : ''}`);
+  const doneMsg = (code, n) => {
+    if (code === 'generated') return `Đã sinh ${Math.min(Math.max(parseInt(n, 10) || 0, 0), 100000)} công việc`;
+    if (code === 'delete_failed') return 'Không thể xóa: mục không còn tồn tại';
+    return null;
+  };
 
   r.get('/templates', (req, res) => {
     const tab = req.query.tab === 'recurring' ? 'recurring' : 'templates';
@@ -36,7 +42,7 @@ module.exports = (db) => {
     }));
     res.render('templates/index', {
       title: 'Mẫu & Việc định kỳ', tab, templates: templates.listTemplates(db), rules, LABELS, FREQ, WEEKDAYS,
-      msg: typeof req.query.msg === 'string' ? req.query.msg : null,
+      msg: doneMsg(req.query.done, req.query.n),
     });
   });
 
@@ -67,7 +73,7 @@ module.exports = (db) => {
   r.post('/templates/:id(\\d+)/delete', wrap((req, res) => {
     templates.deleteTemplate(db, Number(req.params.id), req.user.id);
     backTo(res, 'templates');
-  }, (req, res, e) => backTo(res, 'templates', e.message)));
+  }, (req, res) => backTo(res, 'templates', 'delete_failed')));
 
   // --- Việc định kỳ ---
   const ruleForm = (res, status, target, form, error) => res.status(status).render('templates/recurring-form', {
@@ -99,12 +105,12 @@ module.exports = (db) => {
   r.post('/templates/recurring/:id(\\d+)/delete', wrap((req, res) => {
     recurring.deleteRule(db, Number(req.params.id), req.user.id);
     backTo(res, 'recurring');
-  }, (req, res, e) => backTo(res, 'recurring', e.message)));
+  }, (req, res) => backTo(res, 'recurring', 'delete_failed')));
 
   r.post('/templates/generate', wrap((req, res) => {
     const n = recurring.generateDue(db, today());
-    backTo(res, 'recurring', `Đã sinh ${n} công việc`);
-  }, (req, res, e) => backTo(res, 'recurring', e.message)));
+    backTo(res, 'recurring', 'generated', n);
+  }, (req, res) => backTo(res, 'recurring')));
 
   return r;
 };

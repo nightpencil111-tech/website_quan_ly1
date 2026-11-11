@@ -88,6 +88,7 @@ function updateUser(db, id, data, actorId) {
   if (!cur) throw new AppError('Không tìm thấy tài khoản');
   const d = clean({ ...data, username: cur.username });
   checkUnit(db, d.unit_id);
+  if (id === actorId && d.role !== cur.role) throw new AppError('Đồng chí không thể tự thay đổi vai trò của mình');
   if (cur.role === 'admin' && cur.active && d.role !== 'admin' && activeAdminCount(db, id) === 0) {
     throw new AppError(LAST_ADMIN_MSG);
   }

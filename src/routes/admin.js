@@ -10,6 +10,16 @@ const { today } = require('../util/date');
 const { LABELS } = require('../util/text');
 
 const PAGE = 50;
+const AUDIT_ACTIONS = {
+  login: 'Đăng nhập', login_fail: 'Đăng nhập thất bại', logout: 'Đăng xuất', change_password: 'Đổi mật khẩu',
+  user_create: 'Tạo tài khoản', user_update: 'Sửa tài khoản', user_lock: 'Khóa tài khoản', user_unlock: 'Mở khóa tài khoản',
+  user_reset_password: 'Đặt lại mật khẩu', unit_create: 'Tạo đơn vị', unit_update: 'Sửa đơn vị', unit_delete: 'Xóa đơn vị',
+  task_create: 'Tạo công việc', task_update: 'Sửa công việc', task_delete: 'Xóa công việc', task_status: 'Chuyển trạng thái công việc',
+  template_create: 'Tạo mẫu công việc', template_update: 'Sửa mẫu công việc', template_delete: 'Xóa mẫu công việc',
+  rule_create: 'Tạo việc định kỳ', rule_update: 'Sửa việc định kỳ', rule_delete: 'Xóa việc định kỳ',
+  event_create: 'Tạo sự kiện lịch', event_update: 'Sửa sự kiện lịch', event_delete: 'Xóa sự kiện lịch',
+  settings_update: 'Đổi cài đặt', backup: 'Sao lưu dữ liệu',
+};
 
 module.exports = (db) => {
   const r = express.Router();
@@ -125,7 +135,13 @@ module.exports = (db) => {
     const total = audit.count(db);
     const pages = Math.max(1, Math.ceil(total / PAGE));
     const page = Math.min(Math.max(parseInt(req.query.page, 10) || 1, 1), pages);
+    const detailText = (a) => {
+      if (!a.detail) return '';
+      if (a.action !== 'task_status') return a.detail;
+      return a.detail.replace(/\b(chua_lam|dang_lam|cho_duyet|hoan_thanh)\b/g, (k) => LABELS.status[k]);
+    };
     res.render('admin/audit', {
+      actionLabel: (c) => AUDIT_ACTIONS[c] || c, detailText,
       title: 'Nhật ký hoạt động', tab: 'audit', rows: audit.list(db, { limit: PAGE, offset: (page - 1) * PAGE }), page, pages, total,
     });
   });

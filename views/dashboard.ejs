@@ -9,7 +9,7 @@ const cards = [
   { label: 'Đang làm', n: c.dang_lam, href: '/tasks?status=dang_lam' },
   { label: 'Chờ duyệt', n: c.cho_duyet, href: '/tasks?status=cho_duyet' },
   { label: 'Quá hạn', n: c.overdue, href: '/tasks?overdue=1', warn: c.overdue > 0 },
-  { label: 'Hoàn thành tuần này', n: c.done_this_week, href: '/tasks?status=hoan_thanh' },
+  { label: 'Hoàn thành tuần này', n: c.done_this_week, href: '/tasks?status=hoan_thanh&done_from=' + stats.week.from + '&done_to=' + stats.week.to },
 ];
 %>
 <div class="stat-grid">

@@ -49,7 +49,7 @@ function dashboardStats(db, user, today) {
   }).filter((x) => x.total > 0);
   const limit = addDays(today, 7);
   const upcoming = all.filter((t) => t.status !== 'hoan_thanh' && t.due_date && t.due_date >= today && t.due_date <= limit);
-  const out = { counts, byCategory, upcoming };
+  const out = { counts, byCategory, upcoming, week };
   if (isMgr) {
     const m = new Map();
     for (const t of all) {
