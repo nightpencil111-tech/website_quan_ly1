@@ -1,0 +1,75 @@
+<h1><%= task.title %></h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<div class="detail-grid">
+<section class="panel">
+  <p>
+    <%- include('../partials/task-badges', { t: task, part: 'priority' }) %>
+    <%- include('../partials/task-badges', { t: task, part: 'overdue' }) %>
+    <span class="badge"><%= LABELS.status[task.status] %></span>
+  </p>
+  <dl class="info">
+    <dt>Lĩnh vực</dt><dd><%= LABELS.category[task.category] %></dd>
+    <dt>Mức ưu tiên</dt><dd><%= LABELS.priority[task.priority] %></dd>
+    <dt>Hạn hoàn thành</dt><dd><%= fmtDate(task.due_date) %></dd>
+    <dt>Người thực hiện</dt><dd><%= task.assignees.map(function (a) { return a.full_name + (a.active ? '' : ' (đã khóa)'); }).join(', ') %></dd>
+    <dt>Tiến độ</dt><dd><%- include('../partials/task-badges', { t: task, part: 'progress' }) %></dd>
+  </dl>
+  <% if (task.description) { %><p class="desc"><%= task.description %></p><% } %>
+
+  <% if (actions.length) { %>
+  <h2>Chuyển trạng thái</h2>
+  <% actions.forEach(function (a) { %>
+  <form method="post" action="/tasks/<%= task.id %>/status" class="inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="status" value="<%= a.to %>">
+    <% if (a.note) { %><input type="text" name="note" placeholder="<%= a.note === 'required' ? 'Lý do (bắt buộc)' : 'Ghi chú kết quả' %>" <%= a.note === 'required' ? 'required' : '' %>><% } %>
+    <button type="submit" class="btn <%= a.secondary ? '' : 'btn-primary' %>"><%= a.label %></button>
+  </form>
+  <% }) %>
+  <% } %>
+
+  <% if (manager) { %>
+  <div class="actions-row">
+    <a class="btn" href="/tasks/<%= task.id %>/edit">Sửa</a>
+    <form method="post" action="/tasks/<%= task.id %>/delete" class="inline" onsubmit="return confirm('Xóa công việc này? Thao tác không thể hoàn tác.');">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="btn btn-danger">Xóa</button>
+    </form>
+  </div>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Checklist</h2>
+  <ul class="checklist">
+  <% task.checklist.forEach(function (c) { %>
+    <li>
+      <form method="post" action="/tasks/<%= task.id %>/checklist/<%= c.id %>/toggle" class="inline">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button type="submit" class="check-btn" aria-label="Đánh dấu"><%= c.done ? '☑' : '☐' %></button>
+      </form>
+      <span class="<%= c.done ? 'done' : '' %>"><%= c.content %></span>
+    </li>
+  <% }) %>
+  <% if (!task.checklist.length) { %><li class="muted">Chưa có mục nào.</li><% } %>
+  </ul>
+  <form method="post" action="/tasks/<%= task.id %>/checklist" class="inline-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="text" name="content" placeholder="Thêm mục mới" required>
+    <button type="submit" class="btn">Thêm</button>
+  </form>
+
+  <h2>Trao đổi</h2>
+  <ul class="comments">
+  <% task.comments.forEach(function (c) { %>
+    <li><strong><%= c.full_name || 'Hệ thống' %></strong> <span class="muted"><%= c.created_at %> (UTC)</span><br><%= c.content %></li>
+  <% }) %>
+  <% if (!task.comments.length) { %><li class="muted">Chưa có trao đổi.</li><% } %>
+  </ul>
+  <form method="post" action="/tasks/<%= task.id %>/comments">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <textarea name="content" rows="3" placeholder="Nội dung trao đổi" required></textarea>
+    <button type="submit" class="btn btn-primary">Gửi</button>
+  </form>
+</section>
+</div>

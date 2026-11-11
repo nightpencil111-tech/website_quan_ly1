@@ -1,0 +1,24 @@
+<h1>Bảng Kanban</h1>
+<div id="kanban-msg" class="alert alert-error" hidden role="alert"></div>
+<p class="muted">Kéo thẻ sang cột khác để chuyển trạng thái.</p>
+<div class="kanban" id="kanban">
+<% columns.forEach(function (c) { %>
+  <section class="kanban-col" data-status="<%= c.code %>">
+    <h2><%= c.label %> <span class="badge"><%= c.tasks.length %></span></h2>
+    <div class="kanban-list">
+    <% c.tasks.forEach(function (t) { %>
+      <article class="kanban-card" draggable="true" data-id="<%= t.id %>">
+        <a href="/tasks/<%= t.id %>"><strong><%= t.title %></strong></a>
+        <div>
+          <%- include('../partials/task-badges', { t: t, part: 'priority' }) %>
+          <%- include('../partials/task-badges', { t: t, part: 'overdue' }) %>
+        </div>
+        <div class="muted"><%= t.assignees.map(function (a) { return a.full_name + (a.active ? '' : ' (đã khóa)'); }).join(', ') %> · <%= fmtDate(t.due_date) %></div>
+        <%- include('../partials/task-badges', { t: t, part: 'progress' }) %>
+      </article>
+    <% }) %>
+    </div>
+  </section>
+<% }) %>
+</div>
+<script src="/js/kanban.js"></script>

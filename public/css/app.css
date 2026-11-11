@@ -80,3 +80,36 @@ body.no-nav .content { max-width: 480px; margin: 40px auto; }
 .muted { color: #666; font-size: 14px; }
 .temp-pw { font-size: 22px; letter-spacing: 2px; background: #fff; padding: 2px 10px; border: 1px dashed var(--green); }
 .pager { display: flex; gap: 8px; }
+
+/* Công việc */
+.badge.prio-hoa_toc { background: #c62828; color: #fff; }
+.badge.prio-gap { background: #ef8f1c; color: #fff; }
+.badge-overdue { background: #c62828; color: #fff; }
+.progress { display: inline-block; width: 90px; height: 8px; background: #e2e5d8; border-radius: 4px; vertical-align: middle; overflow: hidden; }
+.progress-bar { display: block; height: 100%; background: var(--green); }
+.progress-text { font-size: 12px; margin-left: 6px; color: var(--muted); }
+.filters .check, .check { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
+.form-card.wide { max-width: 720px; }
+.form-card textarea, .panel textarea { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 15px; font-family: inherit; box-sizing: border-box; }
+.assignees { border: 1px solid var(--border); border-radius: 4px; margin: 0 0 14px; padding: 8px 12px; max-height: 260px; overflow-y: auto; }
+.assignees .check { display: flex; margin-bottom: 6px; font-weight: 400; }
+.assignees .check input { width: auto; margin: 0; display: inline-block; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.panel { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+.panel h2 { font-size: 17px; color: var(--green); margin-top: 18px; }
+.info { display: grid; grid-template-columns: 140px 1fr; gap: 4px 12px; }
+.info dt { font-weight: 600; } .info dd { margin: 0; }
+.desc { white-space: pre-wrap; }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.checklist, .comments, .task-cards { list-style: none; padding: 0; margin: 0 0 12px; }
+.checklist li, .comments li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.checklist .done { text-decoration: line-through; color: var(--muted); }
+.check-btn { background: none; border: 0; font-size: 20px; cursor: pointer; color: var(--green); }
+.task-card { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 12px; overflow-x: auto; }
+.kanban-col { background: #eaede2; border-radius: 6px; padding: 8px; min-height: 200px; }
+.kanban-col h2 { font-size: 16px; margin: 4px 4px 10px; }
+.kanban-col.drop { outline: 2px dashed var(--green); }
+.kanban-list { min-height: 120px; }
+.kanban-card { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; cursor: grab; font-size: 14px; }
+.kanban-card.dragging { opacity: .5; }

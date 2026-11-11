@@ -11,6 +11,7 @@ function createApp({ dbPath }) {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
   app.locals.db = db;
+  app.locals.fmtDate = require('./util/date').fmtDate;
 
   // Khung giao diện: render view thành `body` rồi nhét vào views/layout.ejs.
   app.use((req, res, next) => {
@@ -38,6 +39,7 @@ function createApp({ dbPath }) {
   app.use(require('./routes/auth')(db));
   app.use(require('./routes/dashboard')(db));
   app.use(require('./routes/people')(db));
+  app.use(require('./routes/tasks')(db));
   app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {

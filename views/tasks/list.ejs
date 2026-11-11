@@ -1,0 +1,40 @@
+<h1>Công việc</h1>
+<form method="get" action="/tasks" class="inline-form filters">
+  <input type="search" name="q" placeholder="Tìm theo tiêu đề, nội dung" value="<%= filters.q || '' %>">
+  <select name="status"><option value="">Mọi trạng thái</option>
+    <% Object.keys(LABELS.status).forEach(function (k) { %><option value="<%= k %>" <%= filters.status === k ? 'selected' : '' %>><%= LABELS.status[k] %></option><% }) %></select>
+  <select name="category"><option value="">Mọi lĩnh vực</option>
+    <% Object.keys(LABELS.category).forEach(function (k) { %><option value="<%= k %>" <%= filters.category === k ? 'selected' : '' %>><%= LABELS.category[k] %></option><% }) %></select>
+  <select name="priority"><option value="">Mọi mức ưu tiên</option>
+    <% Object.keys(LABELS.priority).forEach(function (k) { %><option value="<%= k %>" <%= filters.priority === k ? 'selected' : '' %>><%= LABELS.priority[k] %></option><% }) %></select>
+  <% if (people.length) { %>
+  <select name="assignee_id"><option value="">Mọi người thực hiện</option>
+    <% people.forEach(function (p) { %><option value="<%= p.id %>" <%= Number(filters.assignee_id) === p.id ? 'selected' : '' %>><%= p.full_name %></option><% }) %></select>
+  <% } %>
+  <label class="check"><input type="checkbox" name="overdue" value="1" <%= filters.overdue ? 'checked' : '' %>> Chỉ việc quá hạn</label>
+  <button type="submit" class="btn btn-primary">Lọc</button>
+  <a class="btn" href="/tasks">Bỏ lọc</a>
+</form>
+<%# Task 9 gắn nút "Xuất Excel" tới /export/tasks?<query> tại đây %>
+<div id="export-slot" data-query="<%= query %>"></div>
+<% if (user.role !== 'member') { %><p><a class="btn btn-primary" href="/tasks/new">Giao việc mới</a></p><% } %>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Tiêu đề</th><th>Lĩnh vực</th><th>Người thực hiện</th><th>Hạn</th><th>Trạng thái</th><th>Tiến độ</th></tr></thead>
+  <tbody>
+  <% if (!tasks.length) { %><tr><td colspan="6" class="muted">Không có công việc nào phù hợp.</td></tr><% } %>
+  <% tasks.forEach(function (t) { %>
+    <tr>
+      <td><a href="/tasks/<%= t.id %>"><%= t.title %></a>
+        <%- include('../partials/task-badges', { t: t, part: 'priority' }) %>
+        <%- include('../partials/task-badges', { t: t, part: 'overdue' }) %></td>
+      <td><%= LABELS.category[t.category] %></td>
+      <td><%= t.assignees.map(function (a) { return a.full_name + (a.active ? '' : ' (đã khóa)'); }).join(', ') %></td>
+      <td><%= fmtDate(t.due_date) %></td>
+      <td><%= LABELS.status[t.status] %></td>
+      <td><%- include('../partials/task-badges', { t: t, part: 'progress' }) %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>

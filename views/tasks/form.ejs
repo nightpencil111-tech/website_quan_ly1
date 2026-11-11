@@ -1,0 +1,34 @@
+<h1><%= target ? 'Sửa công việc' : 'Giao việc mới' %></h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% const selected = (form.assignee_ids || []).map(Number); %>
+<form method="post" action="<%= target ? '/tasks/' + target.id : '/tasks' %>" class="form-card wide" id="task-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Tiêu đề <input type="text" name="title" value="<%= form.title || '' %>" required maxlength="200"></label>
+  <label>Nội dung <textarea name="description" rows="4"><%= form.description || '' %></textarea></label>
+  <label>Lĩnh vực
+    <select name="category">
+      <% Object.keys(LABELS.category).forEach(function (k) { %><option value="<%= k %>" <%= form.category === k ? 'selected' : '' %>><%= LABELS.category[k] %></option><% }) %>
+    </select></label>
+  <label>Mức ưu tiên
+    <select name="priority">
+      <% Object.keys(LABELS.priority).forEach(function (k) { %><option value="<%= k %>" <%= form.priority === k ? 'selected' : '' %>><%= LABELS.priority[k] %></option><% }) %>
+    </select></label>
+  <label>Hạn hoàn thành <input type="date" name="due_date" value="<%= form.due_date || '' %>" required></label>
+  <fieldset class="assignees">
+    <legend>Người thực hiện</legend>
+    <%# Task 6 (public/js/task-form.js) hiển thị gợi ý người thực hiện vào đây %>
+    <div id="suggest-box"></div>
+    <% people.forEach(function (p) { %>
+      <label class="check"><input type="checkbox" name="assignee_ids" value="<%= p.id %>" <%= selected.includes(p.id) ? 'checked' : '' %>> <%= p.full_name %><% if (p.rank) { %> (<%= p.rank %>)<% } %><% if (p.unit_name) { %> – <%= p.unit_name %><% } %></label>
+    <% }) %>
+    <% (typeof extraPeople !== 'undefined' ? extraPeople : []).forEach(function (p) { %>
+      <label class="check"><input type="checkbox" name="assignee_ids" value="<%= p.id %>" <%= selected.includes(p.id) ? 'checked' : '' %>> <%= p.full_name %> (đã khóa)</label>
+    <% }) %>
+  </fieldset>
+  <% if (!target) { %>
+  <label>Checklist ban đầu (mỗi dòng một mục)
+    <textarea name="checklist" rows="4"><%= checklistText %></textarea></label>
+  <% } %>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="<%= target ? '/tasks/' + target.id : '/tasks' %>">Hủy</a>
+</form>

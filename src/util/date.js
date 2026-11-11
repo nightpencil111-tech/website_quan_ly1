@@ -25,4 +25,10 @@ function weekday(d) {
   return w === 0 ? 7 : w;
 }
 
-module.exports = { today, addDays, daysBetween, weekday };
+// 'YYYY-MM-DD' → 'dd/mm/yyyy' để hiển thị.
+function fmtDate(d) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+module.exports = { today, addDays, daysBetween, weekday, fmtDate };

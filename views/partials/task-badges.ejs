@@ -1,0 +1,4 @@
+<%# Dùng: include('../partials/task-badges', { t: task, part: 'priority' | 'overdue' | 'progress' }) %>
+<% if (part === 'priority' && t.priority !== 'thuong') { %><span class="badge prio-<%= t.priority %>"><%= t.priority === 'hoa_toc' ? 'Hỏa tốc' : 'Gấp' %></span><% } %>
+<% if (part === 'overdue' && t.overdue) { %><span class="badge badge-overdue">Quá hạn</span><% } %>
+<% if (part === 'progress') { %><span class="progress" title="Tiến độ <%= t.progress %>%"><span class="progress-bar" style="width: <%= t.progress %>%"></span></span><span class="progress-text"><%= t.progress %>%</span><% } %>
