@@ -202,6 +202,20 @@ const MIGRATIONS = [
     expires_at INTEGER
   );
   `,
+  `
+  CREATE TABLE doc_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'khac' CHECK (category IN ('ke_hoach','bao_cao','dang','danh_sach','khac')),
+    mode TEXT NOT NULL DEFAULT 'chung' CHECK (mode IN ('chung','tung_nguoi','danh_sach')),
+    file BLOB NOT NULL,
+    manual_fields TEXT NOT NULL DEFAULT '[]',
+    builtin_key TEXT UNIQUE,
+    created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  `,
 ];
 
 // Migration đánh số phiên bản; schema_version giữ một dòng cho mỗi phiên bản đã áp dụng.
@@ -258,6 +272,8 @@ function seedTemplates(db) {
 
 function seed(db) {
   seedTemplates(db);
+  // Nạp trễ để tránh vòng phụ thuộc db ↔ services.
+  require('./services/docTemplates').seedBuiltins(db);
   const { c } = db.prepare('SELECT COUNT(*) AS c FROM users').get();
   if (c > 0) return;
   db.exec('BEGIN');
