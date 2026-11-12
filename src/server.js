@@ -43,6 +43,7 @@ function createApp({ dbPath }) {
   app.use((req, res, next) => {
     res.locals.path = req.path;
     res.locals.flash = null;
+    res.locals.hasProfile = !!(req.user && db.prepare('SELECT 1 FROM soldiers WHERE user_id = ?').get(req.user.id));
     next();
   });
   app.use(auth.csrfCheck);

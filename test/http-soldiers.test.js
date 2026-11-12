@@ -91,6 +91,10 @@ test('/my-profile: member thấy hồ sơ mình, không thấy dữ liệu nhạ
     assert.ok(html.includes('Nguyễn Văn An'));
     assert.ok(!html.includes('TUTUONG-BIMAT') && !html.includes('HOANCANH-BIMAT'));
     assert.ok(!html.includes('Tư tưởng'));
+    const fam = await (await get(s, ma, '/my-profile?tab=gia-dinh')).text();
+    assert.ok(fam.includes('Nguyễn Cha'), 'tab gia đình phải hiển thị thân nhân');
+    assert.ok(!fam.includes('HOANCANH-BIMAT') && !fam.includes('Hoàn cảnh'));
+    assert.ok(html.includes('href="/my-profile"'), 'member đã liên kết thấy mục Hồ sơ của tôi');
     const all = await (await get(s, ma, '/my-profile?tab=tu-tuong')).text();
     assert.ok(!all.includes('TUTUONG-BIMAT') && !all.includes('Tư tưởng'));
     assert.ok(s.db.prepare("SELECT 1 FROM audit_log WHERE action = 'soldier_view'").get());
@@ -98,6 +102,22 @@ test('/my-profile: member thấy hồ sơ mình, không thấy dữ liệu nhạ
     const mc = await loginAs(s.base, 'mc', 'pw12345678');
     const un = await get(s, mc, '/my-profile');
     assert.equal(un.status, 200);
-    assert.ok((await un.text()).includes('chưa được liên kết'));
+    const unHtml = await un.text();
+    assert.ok(unHtml.includes('chưa được liên kết'));
+    assert.ok(!unHtml.includes('href="/my-profile"'), 'chưa liên kết thì không có mục menu');
+  } finally { await s.close(); }
+});
+
+test('mốc: danh sách cần quan tâm tư tưởng ở trang mốc, dashboard chỉ có số lượng', async () => {
+  const { s } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const dash = await (await get(s, m, '/')).text();
+    assert.ok(dash.includes('Cần quan tâm tư tưởng'));
+    assert.ok(!dash.includes('Nguyễn Văn An'));
+    const ms = await (await get(s, m, '/soldiers/milestones')).text();
+    assert.ok(ms.includes('Cần quan tâm tư tưởng') && ms.includes('Nguyễn Văn An'));
+    const list = await (await get(s, m, '/soldiers?done=imported&n=3&m=1<b>')).text();
+    assert.ok(list.includes('Đã nhập 3 hồ sơ; bỏ qua 1 hồ sơ trùng'));
   } finally { await s.close(); }
 });

@@ -104,7 +104,7 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 
 ### Lưu những gì
 
-Mỗi quân nhân có một hồ sơ gồm: lý lịch (họ tên, ngày sinh, quê quán, dân tộc, tôn giáo, trình độ, cấp bậc và ngày nhận, ngày nhập ngũ, ngày vào Đoàn/Đảng/chuyển chính thức, sức khỏe, điện thoại), thân nhân trong gia đình (kèm ghi chú hoàn cảnh khó khăn), quá trình công tác, khen thưởng và kỷ luật, nghỉ phép/tranh thủ, và nhật ký theo dõi tư tưởng. Hồ sơ có thể liên kết với một tài khoản đăng nhập (chọn ở form tài khoản hoặc ở hồ sơ); xóa tài khoản không làm mất hồ sơ.
+Mỗi quân nhân có một hồ sơ gồm: lý lịch (họ tên, ngày sinh, quê quán, dân tộc, tôn giáo, trình độ, cấp bậc và ngày nhận, ngày nhập ngũ, ngày vào Đoàn/Đảng/chuyển chính thức, sức khỏe, điện thoại), thân nhân trong gia đình (kèm ghi chú hoàn cảnh khó khăn), quá trình công tác, khen thưởng và kỷ luật, nghỉ phép/tranh thủ, và nhật ký theo dõi tư tưởng. Hồ sơ có thể liên kết với một tài khoản đăng nhập (chọn ở form tài khoản, Quản trị → Tài khoản; trang hồ sơ hiển thị tài khoản đã liên kết). Khóa tài khoản không ảnh hưởng hồ sơ.
 
 ### Ai xem được gì
 
@@ -125,7 +125,7 @@ Quản trị viên vào **Cài đặt → Thời hạn nhắc mốc** để nh�
 2. Điền dữ liệu ở sheet "Hồ sơ", mỗi quân nhân một dòng từ dòng 2 (xóa hoặc sửa dòng ví dụ). Chỉ cột **Họ tên** là bắt buộc.
 3. Ngày nhập theo dạng **dd/mm/yyyy** (ô ngày của Excel cũng được nhận).
 4. Cột **Đơn vị** phải trùng tên đơn vị đã có trong hệ thống: quản trị viên cần tạo đơn vị trước khi nhập.
-5. Cột **SĐT** nên đặt định dạng **Text** trước khi gõ để giữ số 0 đầu.
+5. Các cột Quê quán, Dân tộc, Tôn giáo, Văn hóa, **SĐT** trong tệp mẫu đã đặt sẵn định dạng **Text**; nếu tự thêm dòng ngoài vùng mẫu, đặt các cột này về Text trước khi gõ để giữ số 0 đầu và tránh Excel đổi "12/12" thành ngày.
 6. Chọn tệp (.xlsx, tối đa 2MB), bấm **Tải lên và xem trước**. Màn hình xem trước liệt kê dòng hợp lệ, dòng lỗi (kèm lý do) và dòng trùng (cùng họ tên và ngày sinh); dòng lỗi và trùng sẽ bị bỏ qua.
 7. Kiểm tra rồi bấm **Xác nhận nhập**; bản xem trước không xác nhận sẽ hết hạn sau 30 phút. Việc nhập được ghi vào nhật ký.
 

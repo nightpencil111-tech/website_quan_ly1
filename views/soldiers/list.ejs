@@ -1,4 +1,5 @@
 <h1>Hồ sơ quân nhân</h1>
+<% if (msg) { %><div class="alert alert-info"><%= msg %></div><% } %>
 <form method="get" action="/soldiers" class="inline-form filters">
   <input type="search" name="q" placeholder="Tìm theo họ tên, chức vụ" value="<%= filters.q || '' %>">
   <select name="unit_id"><option value="">Mọi đơn vị</option>

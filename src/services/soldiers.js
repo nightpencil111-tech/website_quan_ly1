@@ -163,9 +163,10 @@ function listSoldiers(db, filters = {}) {
 }
 
 function linkUser(db, soldierId, userId, actorId) {
-  const cur = db.prepare('SELECT full_name FROM soldiers WHERE id = ?').get(soldierId);
+  const cur = db.prepare('SELECT full_name, user_id FROM soldiers WHERE id = ?').get(soldierId);
   if (!cur) throw new AppError('Không tìm thấy hồ sơ');
   const uid = blank(userId) ? null : Number(userId);
+  if (uid !== null && cur.user_id && cur.user_id !== uid) throw new AppError('Hồ sơ này đã liên kết với tài khoản khác');
   tx(db, () => {
     if (uid !== null) checkLink(db, soldierId, uid);
     db.prepare("UPDATE soldiers SET user_id = ?, updated_at = datetime('now') WHERE id = ?").run(uid, soldierId);

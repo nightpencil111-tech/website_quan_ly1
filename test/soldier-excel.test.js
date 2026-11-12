@@ -73,7 +73,7 @@ test('commitImport: giao dịch, draft người khác bị từ chối', async (
   const p = await xl.parseImport(db, await sampleFile());
   const id = xl.saveDraft(db, u1, p);
   assert.throws(() => xl.commitImport(db, id, u2, u2), AppError);
-  assert.equal(xl.commitImport(db, id, u1, u1), 2);
+  assert.deepEqual(xl.commitImport(db, id, u1, u1), { inserted: 2, skipped: 0 });
   assert.equal(db.prepare('SELECT COUNT(*) c FROM soldiers').get().c, 2);
   assert.equal(db.prepare("SELECT detail FROM audit_log WHERE action='soldier_import'").get().detail, '2 hồ sơ');
   assert.throws(() => xl.commitImport(db, id, u1, u1), AppError);
@@ -122,4 +122,79 @@ test('HTTP: member 403, xuất, mẫu, preview 3mb, 413, xác nhận', async () 
     assert.equal(ex2.status, 200);
     assert.equal(s.db.prepare("SELECT COUNT(*) c FROM audit_log WHERE action='soldier_export'").get().c, 2);
   } finally { await s.close(); }
+});
+
+const oneRow = async (cells, extraRows = []) => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('a');
+  ws.addRow(xl.TEMPLATE_COLUMNS);
+  ws.addRow(cells);
+  extraRows.forEach((r) => ws.addRow(r));
+  return Buffer.from(await wb.xlsx.writeBuffer());
+};
+const blank = (n) => new Array(n).fill('');
+
+test('mẫu: cột văn bản định dạng Text và có hướng dẫn', async () => {
+  const t = await readRows(await xl.templateWorkbook());
+  const ws = t.worksheets[0];
+  for (const c of [9, 10, 11, 12, 13]) assert.equal(ws.getColumn(c).numFmt, '@', `cột ${c}`);
+  const guide = t.getWorksheet('Hướng dẫn');
+  let text = '';
+  guide.eachRow((r) => { text += r.getCell(1).value + '\n'; });
+  assert.match(text, /định dạng Text/);
+});
+
+test('parseImport: SĐT dạng số 9 chữ số được thêm số 0 đầu; chuỗi giữ nguyên', async () => {
+  const db = makeDb();
+  const row = (name, phone) => { const r = blank(16); r[0] = name; r[12] = phone; return r; };
+  const r = await xl.parseImport(db, await oneRow(row('An', 912345678), [row('Bình', '0987654321'), row('Chi', 987654321)]));
+  assert.deepEqual(r.valid.map((s) => s.phone), ['0912345678', '0987654321', '0987654321']);
+});
+
+test('parseImport: ô văn bản bị Excel đổi thành ngày không bị bỏ', async () => {
+  const db = makeDb();
+  const r0 = blank(16);
+  r0[0] = 'An';
+  r0[11] = new Date(Date.UTC(2026, 11, 12)); // Văn hóa 12/12
+  r0[8] = new Date(Date.UTC(2020, 2, 5)); // Quê quán
+  const r = await xl.parseImport(db, await oneRow(r0));
+  assert.equal(r.valid[0].education, '12/12');
+  assert.equal(r.valid[0].hometown, '05/03/2020');
+});
+
+test('parseImport: tên đơn vị trùng nhiều đơn vị bị báo lỗi', async () => {
+  const db = makeDb();
+  db.prepare("INSERT INTO units (name) VALUES ('Tiểu đội 1')").run();
+  db.prepare("INSERT INTO units (name) VALUES ('Tiểu đội 1')").run();
+  const r0 = blank(16); r0[0] = 'An'; r0[6] = 'tieu doi 1';
+  const r = await xl.parseImport(db, await oneRow(r0));
+  assert.equal(r.valid.length, 0);
+  assert.match(r.errors[0].message, /Tên đơn vị "tieu doi 1" trùng nhiều đơn vị, đề nghị đổi tên cho khác nhau/);
+});
+
+test('parseImport: giới hạn dòng chỉ đếm dòng có dữ liệu', async () => {
+  const db = makeDb();
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('a');
+  ws.addRow(xl.TEMPLATE_COLUMNS);
+  ws.addRow(['An', '01/01/2000']);
+  for (let n = 3; n <= 5000; n++) ws.getRow(n).getCell(1).numFmt = '@'; // chỉ định dạng, không dữ liệu
+  const r = await xl.parseImport(db, Buffer.from(await wb.xlsx.writeBuffer()));
+  assert.equal(r.valid.length, 1);
+
+  const big = new ExcelJS.Workbook();
+  const bs = big.addWorksheet('a');
+  bs.addRow(xl.TEMPLATE_COLUMNS);
+  for (let n = 0; n < 2001; n++) bs.addRow([`Người ${n}`, '']);
+  await assert.rejects(xl.parseImport(db, Buffer.from(await big.xlsx.writeBuffer())), /quá nhiều dòng/);
+});
+
+test('commitImport: kiểm tra lại trùng lúc nhập', async () => {
+  const db = makeDb();
+  const u = Number(db.prepare("INSERT INTO users (username, password_hash, full_name, role) VALUES ('a','x','A','manager')").run().lastInsertRowid);
+  const p = await xl.parseImport(db, await sampleFile());
+  const id = xl.saveDraft(db, u, p);
+  soldiers.createSoldier(db, { full_name: 'Phạm Thị Hai', birth_date: '2004-03-05' }, null); // thêm tay sau khi xem trước
+  assert.deepEqual(xl.commitImport(db, id, u, u), { inserted: 1, skipped: 1 });
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM soldiers').get().c, 2);
 });

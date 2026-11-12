@@ -143,3 +143,16 @@ test('thông báo riêng khi thiếu ngày vào Đảng; user_id không hợp l�
   assert.throws(() => S.linkUser(db, id, 'abc', null), /Tài khoản không tồn tại/);
   assert.throws(() => S.createSoldier(db, { full_name: 'B', user_id: 'x' }, null), AppError);
 });
+
+test('linkUser: không chuyển hồ sơ đã liên kết sang tài khoản khác', () => {
+  const db = makeDb();
+  const mk = (n) => Number(db.prepare("INSERT INTO users (username, password_hash, full_name, role) VALUES (?, 'x', ?, 'member')").run(n, n).lastInsertRowid);
+  const u1 = mk('u1'); const u2 = mk('u2');
+  const a = S.createSoldier(db, { full_name: 'A' }, null);
+  S.linkUser(db, a, u1, null);
+  assert.throws(() => S.linkUser(db, a, u2, null), /Hồ sơ này đã liên kết với tài khoản khác/);
+  assert.equal(S.getSoldier(db, a).user_id, u1);
+  S.linkUser(db, a, null, null);
+  S.linkUser(db, a, u2, null);
+  assert.equal(S.getSoldier(db, a).user_id, u2);
+});

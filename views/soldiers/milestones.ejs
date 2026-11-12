@@ -26,3 +26,13 @@
   <% } %>
 </section>
 <% }) %>
+<section class="panel" id="quan-tam">
+  <h2>Cần quan tâm tư tưởng</h2>
+  <% if (!needAttention.length) { %><p class="muted">Hiện không có quân nhân nào cần quan tâm.</p><% } else { %>
+  <ul>
+    <% needAttention.forEach(function (n) { %>
+      <li><a href="/soldiers/<%= n.soldier_id %>?tab=tu-tuong"><%= n.full_name %></a> – <%= SL2[n.level] || n.level %><% if (n.date) { %> (<%= fmtDate(n.date) %>)<% } %></li>
+    <% }) %>
+  </ul>
+  <% } %>
+</section>

@@ -80,10 +80,17 @@ module.exports = (db) => {
   });
 
   // ---- Danh sách ----
+  const doneMsg = (code, n, m) => {
+    const num = (x) => Math.min(Math.max(parseInt(x, 10) || 0, 0), 100000);
+    if (code === 'imported') return `Đã nhập ${num(n)} hồ sơ; bỏ qua ${num(m)} hồ sơ trùng`;
+    return null;
+  };
+
   r.get('/soldiers', (req, res) => {
-    const filters = clean(req.query);
+    const { done, n, m, ...rest } = req.query;
+    const filters = clean(rest);
     res.render('soldiers/list', {
-      title: 'Hồ sơ quân nhân', soldiers: soldiers.listSoldiers(db, filters), filters,
+      msg: doneMsg(done, n, m), title: 'Hồ sơ quân nhân', soldiers: soldiers.listSoldiers(db, filters), filters,
       units: users.listUnits(db), RANKS, SL: SOLDIER_LABELS,
     });
   });
@@ -144,8 +151,8 @@ module.exports = (db) => {
 
   r.post('/soldiers/import/:draftId/confirm', (req, res) => {
     try {
-      soldierExcel.commitImport(db, req.params.draftId, req.user.id, req.user.id);
-      res.redirect('/soldiers');
+      const { inserted, skipped } = soldierExcel.commitImport(db, req.params.draftId, req.user.id, req.user.id);
+      res.redirect(`/soldiers?done=imported&n=${inserted}&m=${skipped}`);
     } catch (e) {
       if (!(e instanceof AppError)) throw e;
       res.status(400).render('soldiers/import', { title: 'Nhập hồ sơ từ Excel', error: e.message });
@@ -163,7 +170,7 @@ module.exports = (db) => {
       kind, label: SOLDIER_LABELS.milestoneKind[kind], items: ms.items.filter((i) => i.kind === kind),
     }));
     res.render('soldiers/milestones', {
-      title: 'Mốc sắp đến', groups, missing: ms.missingConfig, missingText: ms.missingConfig.map((k) => SOLDIER_LABELS.milestoneKind[k]).join('; '), SL: SOLDIER_LABELS, isAdmin: req.user.role === 'admin',
+      title: 'Mốc sắp đến', groups, needAttention: milestones.soldierStats(db, today()).needAttention, SL2: SOLDIER_LABELS.thoughtLevel, missing: ms.missingConfig, missingText: ms.missingConfig.map((k) => SOLDIER_LABELS.milestoneKind[k]).join('; '), SL: SOLDIER_LABELS, isAdmin: req.user.role === 'admin',
     });
   });
 

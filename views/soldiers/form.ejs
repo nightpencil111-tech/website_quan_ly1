@@ -25,7 +25,8 @@ const dates = [['birth_date', 'Ngày sinh'], ['rank_date', 'Ngày nhận cấp b
       <% Object.keys(SL.status).forEach(function (k) { %><option value="<%= k %>" <%= (v('status') || 'dang_cong_tac') === k ? 'selected' : '' %>><%= SL.status[k] %></option><% }) %></select></label>
   <% text.forEach(function (t) { %><label><%= t[1] %> <input type="text" name="<%= t[0] %>" value="<%= v(t[0]) %>"></label><% }) %>
   <% dates.forEach(function (t) { %><label><%= t[1] %> <input type="date" name="<%= t[0] %>" value="<%= v(t[0]) %>"></label><% }) %>
-  <label>Ghi chú <textarea name="notes" rows="3"><%= v('notes') %></textarea></label>
+  <label>Ghi chú <textarea name="notes" rows="3"><%= v('notes') %></textarea>
+    <small class="muted">Chiến sĩ xem được mục này trong Hồ sơ của tôi; nội dung nhạy cảm ghi ở mục Tư tưởng hoặc Hoàn cảnh gia đình.</small></label>
   <button type="submit" class="btn btn-primary">Lưu</button>
   <a class="btn" href="<%= target ? '/soldiers/' + target.id : '/soldiers' %>">Hủy</a>
 </form>

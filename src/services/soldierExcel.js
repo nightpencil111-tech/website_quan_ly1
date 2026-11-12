@@ -52,6 +52,8 @@ async function templateWorkbook() {
   const wb = new ExcelJS.Workbook();
   const ws = headerSheet(wb, 'Hồ sơ', TEMPLATE_COLUMNS, [24, 13, 10, 18, 16, 20, 20, 14, 26, 12, 12, 10, 14, 14, 14, 16]);
   // Dòng ví dụ hư cấu; để trống cột Đơn vị vì tên đơn vị phải khớp đơn vị đã có trong hệ thống.
+  // Cột văn bản đặt định dạng Text để Excel không tự đổi "12/12" thành ngày hay bỏ số 0 đầu của SĐT.
+  [9, 10, 11, 12, 13].forEach((c) => { ws.getColumn(c).numFmt = '@'; });
   ws.addRow([
     'Nguyễn Văn Mẫu', '15/08/2003', 'Nam', 'Binh nhì', '01/03/2023', 'Chiến sĩ', '', '01/03/2023',
     'Xã Ví Dụ, huyện Mẫu, tỉnh Giả Định', 'Kinh', 'Không', '12/12', '0900000000', '26/03/2019', '', '',
@@ -67,7 +69,8 @@ async function templateWorkbook() {
     '5. Cấp bậc ghi đúng một trong: ' + RANKS.join(', ') + '.',
     '6. Tên đơn vị phải trùng với đơn vị đã có trong hệ thống (không phân biệt hoa thường, dấu); đơn vị chưa có thì tạo trước ở mục quản trị.',
     '7. Hồ sơ trùng họ tên và ngày sinh với hồ sơ đã có (hoặc trùng ngay trong tệp) sẽ bị bỏ qua và được liệt kê ở bước xem trước.',
-    '8. Tệp phải là .xlsx, dung lượng tối đa 2MB. Không nhập thông tin tư tưởng, hoàn cảnh gia đình qua tệp này.',
+    '8. Các cột Quê quán, Dân tộc, Tôn giáo, Văn hóa, SĐT đã đặt sẵn định dạng Text: đồng chí nhập thẳng (ví dụ SĐT 0912345678, Văn hóa 12/12). Nếu dán thêm dòng ngoài vùng mẫu, hãy đặt các cột này về định dạng Text trước khi gõ để Excel không bỏ số 0 đầu hoặc đổi thành ngày.',
+    '9. Tệp phải là .xlsx, dung lượng tối đa 2MB. Không nhập thông tin tư tưởng, hoàn cảnh gia đình qua tệp này.',
   ].forEach((line, i) => {
     const row = g.addRow([line]);
     row.alignment = { wrapText: true, vertical: 'top' };
@@ -108,6 +111,19 @@ function toDateString(v) {
   return s; // để normalize báo "không hợp lệ"
 }
 
+// Ô văn bản bị Excel tự đổi thành ngày: không bỏ đi mà hiển thị lại (Văn hóa -> d/m, trường khác -> dd/mm/yyyy).
+function dateAsText(d, field) {
+  if (Number.isNaN(d.getTime())) return '';
+  if (field === 'education') return `${d.getUTCDate()}/${d.getUTCMonth() + 1}`;
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+}
+
+// SĐT gõ ở ô General thành số: trả lại chuỗi, thêm số 0 đầu khi còn 9 chữ số.
+function phoneText(v) {
+  const s = String(v);
+  return typeof v === 'number' && /^\d{9}$/.test(s) ? '0' + s : s;
+}
+
 const dupKey = (name, birth) => `${fold(String(name).trim()).replace(/\s+/g, ' ')}|${birth || ''}`;
 
 async function parseImport(db, buffer) {
@@ -119,7 +135,6 @@ async function parseImport(db, buffer) {
   }
   const ws = wb.worksheets[0];
   if (!ws) throw new AppError('Tệp không đúng định dạng Excel (.xlsx)');
-  if (ws.rowCount > MAX_ROWS + 1) throw new AppError(`Tệp có quá nhiều dòng (tối đa ${MAX_ROWS} dòng)`);
 
   // Ánh xạ cột theo tiêu đề; thiếu tiêu đề thì dùng đúng thứ tự cột của tệp mẫu.
   const colOf = {};
@@ -134,14 +149,21 @@ async function parseImport(db, buffer) {
   });
 
   const units = db.prepare('SELECT id, name FROM units').all();
-  const unitByName = new Map(units.map((u) => [fold(u.name).trim(), u]));
+  const unitByName = new Map();
+  for (const u of units) {
+    const k = fold(u.name).trim();
+    unitByName.set(k, [...(unitByName.get(k) || []), u]);
+  }
   const seen = new Set();
   for (const s of db.prepare('SELECT full_name, birth_date FROM soldiers').all()) seen.add(dupKey(s.full_name, s.birth_date));
 
   const valid = [];
   const errors = [];
   const duplicates = [];
-  for (let n = 2; n <= ws.rowCount; n++) {
+  const rowNums = [];
+  ws.eachRow({ includeEmpty: false }, (_row, n) => { if (n >= 2) rowNums.push(n); });
+  let filled = 0;
+  for (const n of rowNums) {
     const row = ws.getRow(n);
     const raw = {};
     let any = false;
@@ -151,11 +173,14 @@ async function parseImport(db, buffer) {
       if (v !== '') any = true;
     }
     if (!any) continue;
+    if (++filled > MAX_ROWS) throw new AppError(`Tệp có quá nhiều dòng (tối đa ${MAX_ROWS} dòng)`);
     try {
       const input = {};
       for (const f of TEMPLATE_FIELDS) {
         if (f === 'unit' || f === 'gender' || f === 'rank') continue;
-        input[f] = DATE_KEYS.has(f) ? toDateString(raw[f]) : (raw[f] instanceof Date ? '' : String(raw[f]));
+        if (DATE_KEYS.has(f)) input[f] = toDateString(raw[f]);
+        else if (raw[f] instanceof Date) input[f] = dateAsText(raw[f], f);
+        else input[f] = f === 'phone' ? phoneText(raw[f]) : String(raw[f]);
       }
       if (raw.gender !== '') {
         const g = fold(String(raw.gender)).trim();
@@ -169,8 +194,10 @@ async function parseImport(db, buffer) {
       }
       let unitName = '';
       if (raw.unit !== '') {
-        const u = unitByName.get(fold(String(raw.unit)).trim());
-        if (!u) throw new AppError(`Đơn vị "${raw.unit}" không tồn tại trong hệ thống`);
+        const found = unitByName.get(fold(String(raw.unit)).trim()) || [];
+        if (!found.length) throw new AppError(`Đơn vị "${raw.unit}" không tồn tại trong hệ thống`);
+        if (found.length > 1) throw new AppError(`Tên đơn vị "${raw.unit}" trùng nhiều đơn vị, đề nghị đổi tên cho khác nhau`);
+        const u = found[0];
         input.unit_id = u.id;
         unitName = u.name;
       }
@@ -218,10 +245,20 @@ function commitImport(db, draftId, userId, actorId) {
   const payload = getDraft(db, draftId, userId);
   const rows = payload.valid || [];
   if (!rows.length) throw new AppError('Không có hồ sơ hợp lệ để nhập');
+  let inserted = 0;
+  let skipped = 0;
   db.exec('BEGIN');
   try {
-    for (const r of rows) soldiers.insertSoldier(db, r, actorId);
-    audit.log(db, actorId, 'soldier_import', 'soldier', `${rows.length} hồ sơ`);
+    // Kiểm tra lại trùng ngay lúc nhập: CSDL có thể đã đổi từ khi xem trước.
+    const seen = new Set(db.prepare('SELECT full_name, birth_date FROM soldiers').all().map((s) => dupKey(s.full_name, s.birth_date)));
+    for (const r of rows) {
+      const key = dupKey(r.full_name, r.birth_date);
+      if (seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      soldiers.insertSoldier(db, r, actorId);
+      inserted++;
+    }
+    audit.log(db, actorId, 'soldier_import', 'soldier', `${inserted} hồ sơ${skipped ? `, bỏ qua ${skipped} trùng` : ''}`);
     db.prepare('DELETE FROM import_drafts WHERE id = ?').run(String(draftId));
     db.prepare('DELETE FROM import_drafts WHERE expires_at < ?').run(Date.now());
     db.exec('COMMIT');
@@ -229,7 +266,7 @@ function commitImport(db, draftId, userId, actorId) {
     db.exec('ROLLBACK');
     throw e;
   }
-  return rows.length;
+  return { inserted, skipped };
 }
 
 module.exports = {

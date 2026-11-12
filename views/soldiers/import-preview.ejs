@@ -2,11 +2,11 @@
 <p class="muted">Tệp: <%= d.fileName %> · Hợp lệ: <%= d.valid.length %> · Lỗi: <%= d.errors.length %> · Trùng: <%= d.duplicates.length %></p>
 <h2>Hồ sơ hợp lệ</h2>
 <div class="table-wrap"><table class="table">
-  <thead><tr><th>Dòng</th><th>Họ và tên</th><th>Ngày sinh</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th></tr></thead>
+  <thead><tr><th>Dòng</th><th>Họ và tên</th><th>Ngày sinh</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th><th>SĐT</th><th>Văn hóa</th></tr></thead>
   <tbody>
-  <% if (!d.valid.length) { %><tr><td colspan="6" class="muted">Không có hồ sơ hợp lệ.</td></tr><% } %>
+  <% if (!d.valid.length) { %><tr><td colspan="8" class="muted">Không có hồ sơ hợp lệ.</td></tr><% } %>
   <% d.valid.forEach(function (s) { %>
-    <tr><td><%= s.row %></td><td><%= s.full_name %></td><td><%= fmtDate(s.birth_date) %></td><td><%= s.rank || '–' %></td><td><%= s.position || '–' %></td><td><%= s.unit_name || '–' %></td></tr>
+    <tr><td><%= s.row %></td><td><%= s.full_name %></td><td><%= fmtDate(s.birth_date) %></td><td><%= s.rank || '–' %></td><td><%= s.position || '–' %></td><td><%= s.unit_name || '–' %></td><td><%= s.phone || '–' %></td><td><%= s.education || '–' %></td></tr>
   <% }) %>
   </tbody>
 </table></div>
