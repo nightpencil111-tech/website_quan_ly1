@@ -200,3 +200,37 @@ test('thông tin đơn vị: admin lưu được, manager bị chặn', async ()
     assert.equal((await post(s, m, '/admin/settings/unit-info', body)).status, 403);
   } finally { await s.close(); }
 });
+
+test('bản nháp: nhập hồ sơ và mẫu văn bản không dùng chéo được', async () => {
+  const { s, ids } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const soldierAdmin = require('../src/services/soldierExcel');
+    const docDraft = soldierAdmin.saveDraft(s.db, ids.mgr, { kind: 'doc_template', fileName: 'a.docx', data: '', suggestions: [], braces: [] });
+    const impDraft = soldierAdmin.saveDraft(s.db, ids.mgr, { fileName: 'a.xlsx', valid: [], errors: [], duplicates: [] });
+    assert.equal((await get(s, m, `/soldiers/import/${docDraft}`)).status, 404);
+    assert.equal((await post(s, m, `/soldiers/import/${docDraft}/confirm`)).status, 400);
+    await post(s, m, `/soldiers/import/${docDraft}/cancel`);
+    assert.ok(s.db.prepare('SELECT 1 FROM import_drafts WHERE id = ?').get(docDraft));
+    assert.equal((await get(s, m, `/documents/templates/review/${impDraft}`)).status, 404);
+    assert.equal((await post(s, m, `/documents/templates/review/${impDraft}`, { name: 'x', category: 'khac', mode: 'chung' })).status, 404);
+    await post(s, m, `/documents/templates/review/${impDraft}/cancel`);
+    assert.ok(s.db.prepare('SELECT 1 FROM import_drafts WHERE id = ?').get(impDraft));
+    assert.equal((await get(s, m, `/documents/templates/review/${docDraft}`)).status, 200);
+  } finally { await s.close(); }
+});
+
+test('member bị chặn upload JSON, tải mẫu, sửa mẫu; khôi phục mẫu tự tải → 400', async () => {
+  const { s } = await boot();
+  try {
+    const mem = await loginAs(s.base, 'mem', 'pw12345678');
+    const id = tplId(s, 'Kế hoạch');
+    assert.equal((await postJson(s, mem, '/documents/templates/upload', { fileName: 'x.docx', data: 'AA==' })).status, 403);
+    assert.equal((await get(s, mem, `/documents/templates/${id}/file`)).status, 403);
+    assert.equal((await post(s, mem, `/documents/templates/${id}/edit`, { name: 'Hack', category: 'khac', mode: 'chung' })).status, 403);
+    assert.equal(docTemplates.getTemplate(s.db, id).name, 'Kế hoạch');
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const c = docTemplates.createTemplate(s.db, { name: 'Tự tải', category: 'khac', mode: 'chung', file: makeDocx(['x']) }, 1);
+    assert.equal((await post(s, m, `/documents/templates/${c.id}/restore`)).status, 400);
+  } finally { await s.close(); }
+});

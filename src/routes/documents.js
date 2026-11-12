@@ -124,9 +124,7 @@ module.exports = (db) => {
   };
   const loadDraft = (req, res) => {
     try {
-      const d = soldierExcel.getDraft(db, req.params.draftId, req.user.id);
-      if (d.kind !== 'doc_template') throw new AppError('Bản xem trước không tồn tại hoặc đã hết hạn, đồng chí vui lòng tải tệp lên lại');
-      return d;
+      return soldierExcel.getDraft(db, req.params.draftId, req.user.id, 'doc_template');
     } catch (e) {
       if (!(e instanceof AppError)) throw e;
       res.status(404).render('documents/upload', { ...base(), title: 'Tải mẫu Word lên', error: e.message });
@@ -159,7 +157,7 @@ module.exports = (db) => {
       const made = docTemplates.createTemplate(db, {
         name: req.body.name, category: req.body.category, mode: req.body.mode, file: applied.buffer, manual_fields: manual,
       }, req.user.id);
-      soldierExcel.discardDraft(db, req.params.draftId, req.user.id);
+      soldierExcel.discardDraft(db, req.params.draftId, req.user.id, 'doc_template');
       res.redirect(`/documents/templates/${made.id}/edit?done=created`);
     } catch (e) {
       if (e instanceof AppError) return renderReview(res, req.params.draftId, d, e.message, form, 400);
@@ -168,14 +166,19 @@ module.exports = (db) => {
   });
 
   r.post('/documents/templates/review/:draftId/cancel', (req, res) => {
-    soldierExcel.discardDraft(db, req.params.draftId, req.user.id);
+    soldierExcel.discardDraft(db, req.params.draftId, req.user.id, 'doc_template');
     res.redirect('/documents');
   });
 
   // ---- Sửa mẫu ----
   const warningsOf = (id) => {
     const t = docTemplates.getTemplate(db, id);
-    const info = inspectTemplate(docTemplates.getTemplateFile(db, id));
+    let info;
+    try {
+      info = inspectTemplate(docTemplates.getTemplateFile(db, id));
+    } catch {
+      return { errors: ['Không đọc được tệp mẫu, đồng chí hãy thay bằng tệp Word khác'], unknown: [] };
+    }
     const known = new Set([...t.manual_fields.map((f) => f.code), ...info.loops]);
     return {
       errors: info.errors,

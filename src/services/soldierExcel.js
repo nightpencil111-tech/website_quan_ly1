@@ -229,15 +229,25 @@ function saveDraft(db, userId, payload) {
   return id;
 }
 
-function getDraft(db, draftId, userId) {
+// `kind`: loại bản nháp mong đợi (null = nhập hồ sơ quân nhân, không có trường kind; 'doc_template' = mẫu văn bản).
+function getDraft(db, draftId, userId, kind = null) {
   const d = db.prepare('SELECT * FROM import_drafts WHERE id = ?').get(String(draftId));
-  if (!d || d.user_id !== userId || d.expires_at < Date.now()) {
+  let payload = null;
+  if (d && d.user_id === userId && d.expires_at >= Date.now()) {
+    try { payload = JSON.parse(d.payload); } catch { payload = null; }
+  }
+  if (!payload || (payload.kind || null) !== kind) {
     throw new AppError('Bản xem trước không tồn tại hoặc đã hết hạn, đồng chí vui lòng tải tệp lên lại');
   }
-  return JSON.parse(d.payload);
+  return payload;
 }
 
-function discardDraft(db, draftId, userId) {
+function discardDraft(db, draftId, userId, kind = null) {
+  try {
+    getDraft(db, draftId, userId, kind);
+  } catch {
+    return;
+  }
   db.prepare('DELETE FROM import_drafts WHERE id = ? AND user_id = ?').run(String(draftId), userId);
 }
 
