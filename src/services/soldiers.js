@@ -34,7 +34,10 @@ function normalize(db, f) {
     if (v !== null && !validDate(v)) throw new AppError(`${label} không hợp lệ`);
     out[k] = v;
   }
-  if (out.party_official_date && (!out.party_join_date || out.party_official_date < out.party_join_date)) {
+  if (out.party_official_date && !out.party_join_date) {
+    throw new AppError('Có ngày chuyển Đảng chính thức thì phải có ngày vào Đảng');
+  }
+  if (out.party_official_date && out.party_official_date < out.party_join_date) {
     throw new AppError('Ngày chuyển Đảng chính thức không được trước ngày vào Đảng');
   }
   out.rank = blank(f.rank) ? null : String(f.rank).trim();
@@ -73,6 +76,7 @@ function tx(db, fn) {
 }
 
 function checkLink(db, soldierId, userId) {
+  if (!Number.isInteger(userId)) throw new AppError('Tài khoản không tồn tại');
   const u = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
   if (!u) throw new AppError('Tài khoản không tồn tại');
   const other = db.prepare('SELECT id FROM soldiers WHERE user_id = ? AND id != ?').get(userId, soldierId ?? 0);

@@ -157,6 +157,9 @@ function deleteUnit(db, id, actorId) {
   if (db.prepare('SELECT 1 FROM users WHERE unit_id = ?').get(id)) {
     throw new AppError('Đơn vị đang có người, đồng chí chuyển người sang đơn vị khác trước khi xóa');
   }
+  if (db.prepare('SELECT 1 FROM soldiers WHERE unit_id = ?').get(id)) {
+    throw new AppError('Đơn vị đang có hồ sơ quân nhân, đồng chí chuyển sang đơn vị khác trước khi xóa');
+  }
   if (db.prepare('SELECT 1 FROM units WHERE parent_id = ?').get(id)) {
     throw new AppError('Đơn vị đang có đơn vị trực thuộc, không thể xóa');
   }

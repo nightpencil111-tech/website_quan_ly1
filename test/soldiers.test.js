@@ -134,3 +134,12 @@ test('xóa tài khoản đã liên kết: hồ sơ còn, user_id NULL', () => {
   db.prepare('DELETE FROM users WHERE id = ?').run(u);
   assert.equal(S.getSoldier(db, a).user_id, null);
 });
+
+test('thông báo riêng khi thiếu ngày vào Đảng; user_id không hợp lệ', () => {
+  const db = makeDb();
+  assert.throws(() => S.createSoldier(db, { full_name: 'A', party_official_date: '2022-01-01' }, null),
+    /phải có ngày vào Đảng/);
+  const id = S.createSoldier(db, { full_name: 'A' }, null);
+  assert.throws(() => S.linkUser(db, id, 'abc', null), /Tài khoản không tồn tại/);
+  assert.throws(() => S.createSoldier(db, { full_name: 'B', user_id: 'x' }, null), AppError);
+});

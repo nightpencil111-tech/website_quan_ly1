@@ -104,3 +104,10 @@ test('audit.list: kèm full_name, phân trang', () => {
   assert.equal(rows[0].target, '2');
   assert.equal(audit.list(db, { limit: 2, offset: 2 }).length, 1);
 });
+
+test('không xóa đơn vị còn hồ sơ quân nhân', () => {
+  const db = makeDb();
+  const u = Number(db.prepare("INSERT INTO units (name) VALUES ('ĐV')").run().lastInsertRowid);
+  db.prepare("INSERT INTO soldiers (full_name, unit_id) VALUES ('A', ?)").run(u);
+  assert.throws(() => users.deleteUnit(db, u, null), /hồ sơ quân nhân/);
+});
