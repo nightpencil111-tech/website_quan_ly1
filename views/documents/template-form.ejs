@@ -1,0 +1,54 @@
+<h1>Quản lý mẫu: <%= t.name %></h1>
+<% if (msg) { %><div class="alert alert-info"><%= msg %></div><% } %>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<% if (warnings.errors.length) { %><div class="alert alert-error">Tệp mẫu có lỗi: <%= warnings.errors.join('; ') %></div><% } %>
+<% if (warnings.unknown.length) { %><div class="alert alert-error">Trong tệp mẫu có các ô chưa được khai báo, khi tạo văn bản sẽ để trống:
+  <% warnings.unknown.forEach(function (c, i) { %><code>{<%= c %>}</code><%= i < warnings.unknown.length - 1 ? ', ' : '' %><% }) %>.
+  Đồng chí hãy thêm chúng vào bảng trường nhập tay bên dưới hoặc sửa lại tệp Word.</div><% } %>
+<form method="post" action="/documents/templates/<%= t.id %>/edit" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Tên mẫu <input type="text" name="name" maxlength="200" required value="<%= form.name %>"></label>
+  <label>Nhóm
+    <select name="category"><% Object.keys(CAT).forEach(function (k) { %><option value="<%= k %>" <%= form.category === k ? 'selected' : '' %>><%= CAT[k] %></option><% }) %></select></label>
+  <label>Chế độ
+    <select name="mode"><% Object.keys(MODE).forEach(function (k) { %><option value="<%= k %>" <%= form.mode === k ? 'selected' : '' %>><%= MODE[k] %></option><% }) %></select></label>
+  <h2>Trường nhập tay</h2>
+  <p class="muted">Mã chỉ gồm chữ thường không dấu, chữ số và dấu _. Mã này gõ trong tệp Word dưới dạng <code>{ma}</code>.</p>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Mã</th><th>Nhãn hiển thị</th><th>Kiểu</th><th>Bắt buộc</th><th></th></tr></thead>
+    <tbody id="mf-body">
+    <% form.manual_fields.forEach(function (f) { %>
+      <tr>
+        <td><input type="text" name="mf_code[]" maxlength="40" value="<%= f.code %>"></td>
+        <td><input type="text" name="mf_label[]" maxlength="120" value="<%= f.label %>"></td>
+        <td><select name="mf_type[]"><% Object.keys(TYPES).forEach(function (k) { %><option value="<%= k %>" <%= f.type === k ? 'selected' : '' %>><%= TYPES[k] %></option><% }) %></select></td>
+        <td><select name="mf_required[]"><option value="0" <%= f.required ? '' : 'selected' %>>Không</option><option value="1" <%= f.required ? 'selected' : '' %>>Có</option></select></td>
+        <td><button type="button" class="btn btn-danger">Xóa dòng</button></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <p><button type="button" id="mf-add" class="btn">Thêm trường</button></p>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="/documents">Quay lại</a>
+</form>
+
+<h2>Tệp mẫu</h2>
+<div class="card">
+  <p><a class="btn" href="/documents/templates/<%= t.id %>/file">Tải tệp mẫu về</a></p>
+  <label for="doc-file">Thay bằng tệp Word khác (.docx, tối đa 5MB)</label>
+  <input type="file" id="doc-file" accept=".docx">
+  <p id="doc-msg" class="muted" role="status"></p>
+  <button type="button" id="doc-btn" class="btn" data-url="/documents/templates/<%= t.id %>/file">Thay tệp mẫu</button>
+</div>
+<div class="btn-row">
+  <% if (t.builtin_key) { %>
+    <form method="post" action="/documents/templates/<%= t.id %>/restore" style="display:inline" onsubmit="return confirm('Khôi phục mẫu về bản gốc? Mọi chỉnh sửa sẽ mất.')">
+      <input type="hidden" name="_csrf" value="<%= csrf %>"><button type="submit" class="btn">Khôi phục mẫu gốc</button></form>
+  <% } else { %>
+    <form method="post" action="/documents/templates/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Xóa mẫu này? Không thể hoàn tác.')">
+      <input type="hidden" name="_csrf" value="<%= csrf %>"><button type="submit" class="btn btn-danger">Xóa mẫu</button></form>
+  <% } %>
+</div>
+<script src="/js/doc-upload.js"></script>
+<script src="/js/doc-fields.js"></script>

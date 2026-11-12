@@ -37,6 +37,9 @@ function createApp({ dbPath }) {
   app.use(express.static(path.join(__dirname, '..', 'public')));
   // Tải tệp Excel nhập (base64 trong JSON) cần hạn mức lớn hơn; gắn trước parser chung (xác thực và CSRF vẫn chạy sau).
   app.use('/soldiers/import/preview', express.json({ limit: '3mb' }));
+  // Tải mẫu Word (base64 trong JSON, tệp ≤ 5MB) cũng cần hạn mức lớn hơn.
+  app.use('/documents/templates/upload', express.json({ limit: '8mb' }));
+  app.use('/documents/templates/:id/file', express.json({ limit: '8mb' }));
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(auth.loadSession(db));
@@ -56,6 +59,7 @@ function createApp({ dbPath }) {
   app.use(require('./routes/calendar')(db));
   app.use(require('./routes/reports')(db));
   app.use(require('./routes/soldiers')(db));
+  app.use(require('./routes/documents')(db));
   app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {

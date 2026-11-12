@@ -1,0 +1,12 @@
+<h1>Tải mẫu Word lên</h1>
+<% if (typeof error !== 'undefined' && error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<p>Đồng chí chọn tệp Word (.docx) có sẵn, ví dụ có dòng "Họ và tên: ......". Hệ thống sẽ tự tìm các chỗ cần điền và cho đồng chí xem lại trước khi lưu thành mẫu.
+  Xem thêm <a href="/documents/fields">danh mục ô trống</a>.</p>
+<div class="card">
+  <label for="doc-file">Tệp Word (.docx, tối đa 5MB)</label>
+  <input type="file" id="doc-file" accept=".docx">
+  <p id="doc-msg" class="muted" role="status"></p>
+  <button type="button" id="doc-btn" class="btn btn-primary" data-url="/documents/templates/upload">Tải lên và kiểm tra</button>
+  <a class="btn" href="/documents">Quay lại</a>
+</div>
+<script src="/js/doc-upload.js"></script>

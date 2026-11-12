@@ -3,7 +3,7 @@ const role = user ? user.role : null;
 const nav = [];
 if (user) {
   nav.push({ href: '/', label: 'Tổng quan' }, { href: '/my', label: 'Việc của tôi' }, { href: '/tasks', label: 'Công việc' }, { href: '/kanban', label: 'Kanban' }, { href: '/calendar', label: 'Lịch công tác' });
-  if (role === 'manager' || role === 'admin') nav.push({ href: '/people', label: 'Quân số' }, { href: '/templates', label: 'Mẫu & Việc định kỳ' }, { href: '/reports', label: 'Báo cáo & Hiệu suất' }, { href: '/soldiers', label: 'Hồ sơ quân nhân' });
+  if (role === 'manager' || role === 'admin') nav.push({ href: '/people', label: 'Quân số' }, { href: '/templates', label: 'Mẫu & Việc định kỳ' }, { href: '/reports', label: 'Báo cáo & Hiệu suất' }, { href: '/soldiers', label: 'Hồ sơ quân nhân' }, { href: '/documents', label: 'Văn bản' });
   if (typeof hasProfile !== 'undefined' && hasProfile) nav.push({ href: '/my-profile', label: 'Hồ sơ của tôi' });
   if (role === 'admin') nav.push({ href: '/admin/users', label: 'Tài khoản' }, { href: '/admin/units', label: 'Đơn vị' }, { href: '/admin/settings', label: 'Cài đặt' }, { href: '/admin/audit', label: 'Nhật ký' }, { href: '/admin/backup', label: 'Sao lưu dữ liệu' });
 }

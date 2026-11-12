@@ -1,0 +1,46 @@
+<%
+const soldierCodes = new Set(catalog.filter(function (f) { return f.group !== 'chung'; }).map(function (f) { return f.code; }));
+function defOf(s) {
+  const given = form.decisions[s.id];
+  if (given !== undefined) return given;
+  if (s.code) return 'use:' + s.code;
+  return s.newCode ? 'manual' : 'skip';
+}
+const anySoldier = d.suggestions.some(function (s) { const v = defOf(s); return v.indexOf('use:') === 0 && soldierCodes.has(v.slice(4)); });
+const mode = form.mode || (anySoldier ? 'tung_nguoi' : 'chung');
+%>
+<h1>Kiểm tra mẫu vừa tải lên</h1>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<p>Tệp: <strong><%= d.fileName %></strong>. Với mỗi chỗ hệ thống nhận ra, đồng chí chọn điền tự động bằng dữ liệu hệ thống, tạo ô nhập tay mới hoặc bỏ qua.</p>
+<% if (d.braces && d.braces.length) { %>
+  <div class="alert alert-error">Trong tệp có dấu ngoặc nhọn đứng lẻ, hệ thống sẽ đổi sang dạng ngoặc không đặc biệt để tránh lỗi:
+    <ul><% d.braces.forEach(function (b) { %><li><%= b %></li><% }) %></ul></div>
+<% } %>
+<form method="post" action="/documents/templates/review/<%= draftId %>" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (!d.suggestions.length) { %><p class="muted">Hệ thống không tìm thấy chỗ nào cần điền. Đồng chí vẫn có thể lưu mẫu nếu tệp đã có sẵn các mã như <code>{ho_ten}</code>.</p><% } else { %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Chỗ cần điền</th><th>Ngữ cảnh</th><th>Xử lý</th></tr></thead>
+    <tbody>
+    <% d.suggestions.forEach(function (s) { const cur = defOf(s); %>
+      <tr>
+        <td><%= s.label %></td>
+        <td><%= s.context %></td>
+        <td><select name="decision_<%= s.id %>">
+          <% catalog.forEach(function (f) { %><option value="use:<%= f.code %>" <%= cur === 'use:' + f.code ? 'selected' : '' %>><%= f.label %> (<%= f.code %>)</option><% }) %>
+          <% if (s.newCode) { %><option value="manual" <%= cur === 'manual' ? 'selected' : '' %>>Trường nhập tay mới (<%= s.newCode %>)</option><% } %>
+          <option value="skip" <%= cur === 'skip' ? 'selected' : '' %>>Bỏ qua</option>
+        </select></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+  <label>Tên mẫu <input type="text" name="name" maxlength="200" required value="<%= form.name %>"></label>
+  <label>Nhóm
+    <select name="category"><% Object.keys(CAT).forEach(function (k) { %><option value="<%= k %>" <%= form.category === k ? 'selected' : '' %>><%= CAT[k] %></option><% }) %></select></label>
+  <label>Chế độ
+    <select name="mode"><% Object.keys(MODE).forEach(function (k) { %><option value="<%= k %>" <%= mode === k ? 'selected' : '' %>><%= MODE[k] %></option><% }) %></select></label>
+  <button type="submit" class="btn btn-primary">Lưu thành mẫu</button>
+  <a class="btn" href="/documents/templates/upload">Tải tệp khác</a>
+</form>

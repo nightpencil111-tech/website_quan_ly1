@@ -7,6 +7,7 @@ const users = require('../services/users');
 const audit = require('../services/audit');
 const soldiers = require('../services/soldiers');
 const milestones = require('../services/milestones');
+const unitInfo = require('../services/unitInfo');
 const { RANKS, RANKS_WITHOUT_INTERVAL } = require('../util/ranks');
 const { AppError } = require('../util/errors');
 const { today } = require('../util/date');
@@ -156,7 +157,7 @@ module.exports = (db) => {
     title: 'Cài đặt hệ thống', tab: 'settings', error, saved,
     threshold: value !== undefined ? value : users.getOverloadThreshold(db),
     ms: milestones.getMilestoneSettings(db), msRanks: RANKS.filter((k) => !RANKS_WITHOUT_INTERVAL.includes(k)),
-    msForm: null, msError: null, ...extra,
+    msForm: null, msError: null, unit: unitInfo.getUnitInfo(db), unitKeys: unitInfo.UNIT_KEYS, unitError: null, ...extra,
   });
   r.get('/admin/settings', (req, res) => renderSettings(res, null, req.query.saved === '1'));
   r.post('/admin/settings', handle((req, res) => {
@@ -188,6 +189,15 @@ module.exports = (db) => {
       if (m) ri[m[1]] = v;
     }
     renderSettings(res, null, false, 400, undefined, { msError: e.message, msForm: { ...b, rank_intervals: ri } });
+  }));
+
+  r.post('/admin/settings/unit-info', handle((req, res) => {
+    unitInfo.saveUnitInfo(db, req.body, req.user.id);
+    res.redirect('/admin/settings?saved=1');
+  }, (req, res, e) => {
+    const unit = {};
+    for (const k of Object.keys(unitInfo.UNIT_KEYS)) unit[k] = String(req.body[k] ?? '');
+    renderSettings(res, null, false, 400, undefined, { unitError: e.message, unit });
   }));
 
   // ---- Nhật ký ----

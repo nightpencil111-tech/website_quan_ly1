@@ -1,0 +1,22 @@
+<h1>Danh mục ô trống</h1>
+<p>Trong tệp Word, đồng chí gõ mã trong dấu ngoặc nhọn, ví dụ <code>{ho_ten}</code>, hệ thống sẽ thay bằng dữ liệu thật khi tạo văn bản.
+  Mã phải gõ liền một mạch, đúng chữ thường không dấu.</p>
+<h2>Thông tin chung (dùng ở mọi mẫu)</h2>
+<div class="table-wrap"><table class="table">
+  <thead><tr><th>Mã</th><th>Ý nghĩa</th><th>Ví dụ giá trị</th></tr></thead>
+  <tbody><% common.forEach(function (f) { %><tr><td><code>{<%= f.code %>}</code></td><td><%= f.label %></td><td><%= f.example %></td></tr><% }) %></tbody>
+</table></div>
+<h2>Thông tin quân nhân (mẫu "mỗi quân nhân một văn bản" hoặc "danh sách")</h2>
+<div class="table-wrap"><table class="table">
+  <thead><tr><th>Mã</th><th>Ý nghĩa</th><th>Ví dụ giá trị</th></tr></thead>
+  <tbody><% soldier.forEach(function (f) { %><tr><td><code>{<%= f.code %>}</code></td><td><%= f.label %></td><td><%= f.example %></td></tr><% }) %></tbody>
+</table></div>
+<h2>Cách làm bảng danh sách nhiều người</h2>
+<div class="card">
+  <p>Tạo một bảng trong Word có một dòng dữ liệu mẫu. Ở <strong>ô đầu tiên</strong> của dòng đó gõ <code>{#ds}</code> trước nội dung,
+    ở <strong>ô cuối cùng</strong> gõ <code>{/ds}</code> sau nội dung. Các ô ở giữa gõ mã quân nhân như <code>{ho_ten}</code>, <code>{cap_bac}</code>.
+    Hệ thống sẽ nhân dòng đó lên cho từng quân nhân đã chọn.</p>
+  <p class="muted">Ví dụ: ô 1 = <code>{#ds}{stt}</code>, ô 2 = <code>{ho_ten}</code>, ô 3 = <code>{cap_bac}</code>, ô cuối = <code>{chuc_vu}{/ds}</code>.</p>
+  <p class="muted">Ngoài các mã trên, đồng chí có thể khai báo thêm trường nhập tay (ví dụ <code>{noi_dung}</code>) trong phần "Quản lý mẫu"; các trường này sẽ hiện thành ô nhập khi tạo văn bản.</p>
+</div>
+<p><a class="btn" href="/documents">Quay lại</a></p>

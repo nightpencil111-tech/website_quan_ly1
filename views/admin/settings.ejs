@@ -33,3 +33,13 @@ const val = function (v) { return v === null || v === undefined ? '' : v; };
   </table></div>
   <p class="btn-row"><button type="submit" class="btn btn-primary">Lưu thời hạn nhắc mốc</button></p>
 </form>
+<h2>Thông tin đơn vị</h2>
+<% if (unitError) { %><div class="alert alert-error"><%= unitError %></div><% } %>
+<form method="post" action="/admin/settings/unit-info" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <p class="muted">Các thông tin này tự điền vào văn bản Word (tiêu ngữ, đơn vị, người ký...). Để trống ô nào thì văn bản để trống chỗ đó.</p>
+  <% Object.keys(unitKeys).forEach(function (k) { %>
+    <label><%= unitKeys[k] %> <input type="text" name="<%= k %>" maxlength="120" value="<%= unit[k] %>"></label>
+  <% }) %>
+  <button type="submit" class="btn btn-primary">Lưu thông tin đơn vị</button>
+</form>

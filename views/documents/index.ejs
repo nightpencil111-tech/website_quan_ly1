@@ -1,0 +1,27 @@
+<h1>Văn bản</h1>
+<% if (msg) { %><div class="alert alert-info"><%= msg %></div><% } %>
+<% if (unitEmpty) { %>
+  <div class="alert alert-error">Thông tin đơn vị chưa được cài đặt nên các chỗ như cấp trên, đơn vị, người ký sẽ để trống.
+    <% if (isAdmin) { %><a href="/admin/settings">Cài đặt thông tin đơn vị</a><% } else { %>Đồng chí báo quản trị viên cài đặt.<% } %></div>
+<% } %>
+<p>
+  <a class="btn btn-primary" href="/documents/templates/upload">Tải mẫu lên</a>
+  <a class="btn" href="/documents/fields">Danh mục ô trống</a>
+</p>
+<% groups.forEach(function (g) { %>
+  <h2><%= g.label %></h2>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Tên mẫu</th><th>Chế độ</th><th>Loại</th><th></th></tr></thead>
+    <tbody>
+    <% g.items.forEach(function (t) { %>
+      <tr>
+        <td><%= t.name %></td>
+        <td><%= MODE[t.mode] %></td>
+        <td><%= t.builtin_key ? 'Dựng sẵn' : 'Do đồng chí tải lên' %></td>
+        <td><a class="btn btn-primary" href="/documents/<%= t.id %>/generate">Tạo văn bản</a>
+            <a class="btn" href="/documents/templates/<%= t.id %>/edit">Quản lý mẫu</a></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+<% }) %>

@@ -1,0 +1,59 @@
+<h1>Tạo văn bản: <%= t.name %></h1>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<% if (unitEmpty) { %>
+  <div class="alert alert-error">Thông tin đơn vị chưa được cài đặt nên cấp trên, đơn vị, người ký... sẽ để trống.
+    <% if (isAdmin) { %><a href="/admin/settings">Cài đặt thông tin đơn vị</a><% } else { %>Đồng chí báo quản trị viên cài đặt.<% } %></div>
+<% } else { %>
+  <details class="card"><summary>Thông tin đơn vị sẽ được tự điền</summary>
+    <ul><% Object.keys(unitKeys).forEach(function (k) { %><li><%= unitKeys[k] %>: <%= unit[k] || '(trống)' %></li><% }) %></ul>
+  </details>
+<% } %>
+<% if (t.mode !== 'chung') { %>
+<form method="get" action="/documents/<%= t.id %>/generate" class="inline-form filters">
+  <input type="search" name="q" placeholder="Tìm theo họ tên, chức vụ" value="<%= filters.q || '' %>">
+  <select name="unit_id"><option value="">Mọi đơn vị</option>
+    <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= Number(filters.unit_id) === u.id ? 'selected' : '' %>><%= u.name %></option><% }) %></select>
+  <select name="status"><option value="">Mọi trạng thái</option>
+    <% Object.keys(SL.status).forEach(function (k) { %><option value="<%= k %>" <%= filters.status === k ? 'selected' : '' %>><%= SL.status[k] %></option><% }) %></select>
+  <select name="party"><option value="">Đảng/Đoàn</option>
+    <% PARTY.forEach(function (p) { %><option value="<%= p[0] %>" <%= filters.party === p[0] ? 'selected' : '' %>><%= p[1] %></option><% }) %></select>
+  <button type="submit" class="btn">Lọc danh sách</button>
+</form>
+<p class="muted">Đồng chí lọc danh sách trước rồi mới nhập các ô bên dưới (lọc lại sẽ làm mới biểu mẫu).</p>
+<% } %>
+<form method="post" action="/documents/<%= t.id %>/generate" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (t.mode !== 'chung') { %>
+    <p><%= t.mode === 'tung_nguoi' ? 'Chọn quân nhân (mỗi người một văn bản; chọn nhiều người sẽ nhận tệp nén .zip).' : 'Chọn các quân nhân đưa vào danh sách.' %></p>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th><input type="checkbox" id="check-all" aria-label="Chọn tất cả"></th><th>Họ và tên</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th></tr></thead>
+      <tbody>
+      <% if (!people.length) { %><tr><td colspan="5" class="muted">Không có hồ sơ nào phù hợp.</td></tr><% } %>
+      <% people.forEach(function (s) { %>
+        <tr><td><input type="checkbox" name="soldier_ids" class="pick" value="<%= s.id %>" <%= form.soldier_ids.indexOf(String(s.id)) >= 0 ? 'checked' : '' %>></td>
+          <td><%= s.full_name %></td><td><%= s.rank || '–' %></td><td><%= s.position || '–' %></td><td><%= s.unit_name || '–' %></td></tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+  <% t.manual_fields.forEach(function (f) { const v = form.manual[f.code] || ''; %>
+    <label><%= f.label %><%= f.required ? ' *' : '' %>
+      <% if (f.type === 'textarea') { %><textarea name="manual[<%= f.code %>]" rows="10" <%= f.required ? 'required' : '' %>><%= v %></textarea>
+      <% } else if (f.type === 'date') { %><input type="date" name="manual[<%= f.code %>]" value="<%= v %>" <%= f.required ? 'required' : '' %>>
+      <% } else { %><input type="text" name="manual[<%= f.code %>]" value="<%= v %>" <%= f.required ? 'required' : '' %>><% } %>
+    </label>
+  <% }) %>
+  <label>Ngày tháng trên văn bản (để trống sẽ lấy hôm nay)
+    <input type="text" name="ngay_thang" maxlength="120" placeholder="vd: Đồng Nai, ngày 12 tháng 11 năm 2026" value="<%= form.ngay_thang %>"></label>
+  <button type="submit" class="btn btn-primary">Tạo và tải văn bản</button>
+  <a class="btn" href="/documents">Quay lại</a>
+</form>
+<script>
+(function () {
+  var all = document.getElementById('check-all');
+  if (!all) return;
+  all.addEventListener('change', function () {
+    document.querySelectorAll('.pick').forEach(function (c) { c.checked = all.checked; });
+  });
+})();
+</script>
