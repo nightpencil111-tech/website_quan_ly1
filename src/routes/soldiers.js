@@ -9,6 +9,7 @@ const { today } = require('../util/date');
 const { AppError } = require('../util/errors');
 const { RANKS, SOLDIER_LABELS } = require('../util/ranks');
 const { clean } = require('../util/filters');
+const soldierExcel = require('../services/soldierExcel');
 
 const { ITEM_TYPES } = soldierItems;
 
@@ -85,6 +86,75 @@ module.exports = (db) => {
       title: 'Hồ sơ quân nhân', soldiers: soldiers.listSoldiers(db, filters), filters,
       units: users.listUnits(db), RANKS, SL: SOLDIER_LABELS,
     });
+  });
+
+  // ---- Xuất / nhập Excel ----
+  const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  const sendXlsx = (res, buf, ascii, vietnamese) => {
+    res.set('Content-Type', XLSX);
+    res.set('Content-Disposition', `attachment; filename="${ascii}.xlsx"; filename*=UTF-8''${encodeURIComponent(vietnamese + '.xlsx')}`);
+    res.send(buf);
+  };
+
+  r.get('/soldiers/export', async (req, res, next) => {
+    try {
+      const rows = soldiers.listSoldiers(db, clean(req.query));
+      const buf = await soldierExcel.exportWorkbook(rows);
+      audit.log(db, req.user.id, 'soldier_export', 'soldier', `${rows.length} hồ sơ`);
+      sendXlsx(res, buf, 'danh-sach-trich-ngang', 'Danh sách trích ngang');
+    } catch (e) { next(e); }
+  });
+
+  r.get('/soldiers/import', (req, res) => {
+    res.render('soldiers/import', { title: 'Nhập hồ sơ từ Excel', error: null });
+  });
+
+  r.get('/soldiers/import/template', async (req, res, next) => {
+    try {
+      sendXlsx(res, await soldierExcel.templateWorkbook(), 'mau-nhap-quan-nhan', 'Mẫu nhập quân nhân');
+    } catch (e) { next(e); }
+  });
+
+  r.post('/soldiers/import/preview', async (req, res, next) => {
+    try {
+      const { fileName, data } = req.body || {};
+      if (typeof data !== 'string' || !data) throw new AppError('Đồng chí chưa chọn tệp Excel');
+      if (!/\.xlsx$/i.test(String(fileName || ''))) throw new AppError('Chỉ nhận tệp Excel .xlsx');
+      const buf = Buffer.from(data, 'base64');
+      if (!buf.length) throw new AppError('Tệp rỗng');
+      if (buf.length > soldierExcel.MAX_BYTES) throw new AppError('Tệp quá lớn, dung lượng tối đa 2MB');
+      const parsed = await soldierExcel.parseImport(db, buf);
+      const id = soldierExcel.saveDraft(db, req.user.id, { fileName: String(fileName), ...parsed });
+      res.json({ ok: true, redirect: `/soldiers/import/${id}` });
+    } catch (e) {
+      if (e instanceof AppError) return res.status(400).json({ ok: false, error: e.message });
+      next(e);
+    }
+  });
+
+  r.get('/soldiers/import/:draftId', (req, res) => {
+    try {
+      const d = soldierExcel.getDraft(db, req.params.draftId, req.user.id);
+      res.render('soldiers/import-preview', { title: 'Xem trước nhập hồ sơ', draftId: req.params.draftId, d, error: null });
+    } catch (e) {
+      if (!(e instanceof AppError)) throw e;
+      res.status(404).render('soldiers/import', { title: 'Nhập hồ sơ từ Excel', error: e.message });
+    }
+  });
+
+  r.post('/soldiers/import/:draftId/confirm', (req, res) => {
+    try {
+      soldierExcel.commitImport(db, req.params.draftId, req.user.id, req.user.id);
+      res.redirect('/soldiers');
+    } catch (e) {
+      if (!(e instanceof AppError)) throw e;
+      res.status(400).render('soldiers/import', { title: 'Nhập hồ sơ từ Excel', error: e.message });
+    }
+  });
+
+  r.post('/soldiers/import/:draftId/cancel', (req, res) => {
+    soldierExcel.discardDraft(db, req.params.draftId, req.user.id);
+    res.redirect('/soldiers/import');
   });
 
   r.get('/soldiers/milestones', (req, res) => {

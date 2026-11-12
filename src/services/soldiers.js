@@ -92,18 +92,22 @@ function decorate(s) {
   return s;
 }
 
-function createSoldier(db, data, actorId) {
+// Chèn một hồ sơ; KHÔNG mở giao dịch (người gọi tự bọc BEGIN/COMMIT).
+function insertSoldier(db, data, actorId) {
   const f = normalize(db, data);
   const userId = blank(data.user_id) ? null : Number(data.user_id);
-  return tx(db, () => {
-    if (userId !== null) checkLink(db, null, userId);
-    const cols = FIELDS.filter((k) => f[k] !== undefined);
-    const id = Number(db.prepare(
-      `INSERT INTO soldiers (user_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`
-    ).run(userId, ...cols.map((k) => f[k])).lastInsertRowid);
-    audit.log(db, actorId, 'soldier_create', `soldier:${id}`, f.full_name);
-    return id;
-  });
+  if (userId !== null) checkLink(db, null, userId);
+  const cols = FIELDS.filter((k) => f[k] !== undefined);
+  const id = Number(db.prepare(
+    `INSERT INTO soldiers (user_id, ${cols.join(', ')}) VALUES (?, ${cols.map(() => '?').join(', ')})`
+  ).run(userId, ...cols.map((k) => f[k])).lastInsertRowid);
+  audit.log(db, actorId, 'soldier_create', `soldier:${id}`, f.full_name);
+  return id;
+}
+
+function createSoldier(db, data, actorId) {
+  normalize(db, data);
+  return tx(db, () => insertSoldier(db, data, actorId));
 }
 
 function updateSoldier(db, id, data, actorId) {
@@ -217,7 +221,7 @@ function redactForMember(profile) {
 }
 
 module.exports = {
-  validDate, getProfile, redactForMember,
+  validDate, normalize, insertSoldier, getProfile, redactForMember,
   createSoldier, updateSoldier, deleteSoldier, getSoldier, listSoldiers,
   findByUser, linkUser, listUnlinked, partyState,
 };

@@ -12,7 +12,8 @@
   <button type="submit" class="btn btn-primary">Lọc</button>
   <a class="btn" href="/soldiers">Bỏ lọc</a>
 </form>
-<p><a class="btn btn-primary" href="/soldiers/new">Thêm hồ sơ</a> <a class="btn" href="/soldiers/milestones">Mốc sắp đến</a></p>
+<p><a class="btn btn-primary" href="/soldiers/new">Thêm hồ sơ</a> <a class="btn" href="/soldiers/milestones">Mốc sắp đến</a>
+  <a class="btn" href="/soldiers/import">Nhập Excel</a> <a class="btn" href="/soldiers/export?<%= new URLSearchParams(Object.fromEntries(Object.entries(filters).map(function (e) { return [e[0], String(e[1])]; }))).toString() %>">Xuất Excel</a></p>
 <div class="table-wrap">
 <table class="table">
   <thead><tr><th>Họ và tên</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th><th>Trạng thái</th><th>Tài khoản</th></tr></thead>

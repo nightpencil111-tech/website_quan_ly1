@@ -1,0 +1,11 @@
+<h1>Nhập hồ sơ từ Excel</h1>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+<p>Đồng chí tải <a href="/soldiers/import/template">tệp mẫu (.xlsx)</a>, điền dữ liệu rồi chọn tệp ở dưới. Hệ thống sẽ cho xem trước và chỉ nhập sau khi đồng chí xác nhận.</p>
+<div class="card">
+  <label for="import-file">Tệp Excel (.xlsx, tối đa 2MB)</label>
+  <input type="file" id="import-file" accept=".xlsx">
+  <p id="import-msg" class="muted" role="status"></p>
+  <button type="button" id="import-btn" class="btn btn-primary">Tải lên và xem trước</button>
+  <a class="btn" href="/soldiers">Quay lại</a>
+</div>
+<script src="/js/soldier-import.js"></script>

@@ -35,6 +35,8 @@ function createApp({ dbPath }) {
     next();
   });
   app.use(express.static(path.join(__dirname, '..', 'public')));
+  // Tải tệp Excel nhập (base64 trong JSON) cần hạn mức lớn hơn; gắn trước parser chung (xác thực và CSRF vẫn chạy sau).
+  app.use('/soldiers/import/preview', express.json({ limit: '3mb' }));
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(auth.loadSession(db));
