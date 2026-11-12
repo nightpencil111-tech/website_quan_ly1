@@ -133,3 +133,31 @@ test('soldierStats: needAttention theo bản ghi mới nhất; onLeaveToday khô
   assert.equal(st.needAttention[0].level, 'can_quan_tam');
   assert.equal(st.needAttention[0].date, '2026-11-01');
 });
+
+test('onLeaveToday: to_date NULL tính một ngày, from_date NULL bị bỏ qua', () => {
+  const db = makeDb();
+  const a = mk(db, {});
+  const b = mk(db, { full_name: 'Trần Văn Bình' });
+  const c = mk(db, { full_name: 'Lê Văn Cường' });
+  db.prepare("INSERT INTO soldier_leaves (soldier_id, kind, from_date, to_date) VALUES (?, 'phep', ?, NULL)").run(a, T);
+  db.prepare("INSERT INTO soldier_leaves (soldier_id, kind, from_date, to_date) VALUES (?, 'phep', '2026-11-10', NULL)").run(b);
+  db.prepare("INSERT INTO soldier_leaves (soldier_id, kind, from_date, to_date) VALUES (?, 'phep', NULL, '2026-12-01')").run(c);
+  assert.equal(M.soldierStats(db, T).onLeaveToday, 1);
+});
+
+test('needAttention: cùng ngày thì bản ghi id lớn nhất thắng', () => {
+  const db = makeDb();
+  const a = mk(db, {});
+  I.addItem(db, 'thought', a, { date: '2026-11-01', level: 'dac_biet', content: 'x' }, null);
+  I.addItem(db, 'thought', a, { date: '2026-11-01', level: 'binh_thuong', content: 'y' }, null);
+  assert.equal(M.soldierStats(db, T).needAttention.length, 0);
+  I.addItem(db, 'thought', a, { date: '2026-11-01', level: 'can_quan_tam', content: 'z' }, null);
+  assert.equal(M.soldierStats(db, T).needAttention[0].level, 'can_quan_tam');
+});
+
+test('niên hạn 0 và -1 bị từ chối', () => {
+  const db = makeDb();
+  assert.throws(() => M.saveMilestoneSettings(db, { rank_intervals: { 'Hạ sĩ': '0' } }, 1), AppError);
+  assert.throws(() => M.saveMilestoneSettings(db, { rank_intervals: { 'Hạ sĩ': -1 } }, 1), AppError);
+  assert.throws(() => M.saveMilestoneSettings(db, { rank_intervals: { 'Hạ sĩ': '-1' } }, 1), AppError);
+});

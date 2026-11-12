@@ -60,6 +60,7 @@ function saveMilestoneSettings(db, data = {}, actorId) {
     const n = parseInt1(v, 600, `Niên hạn cấp bậc ${rank} (tháng)`);
     if (n !== null) intervals[rank] = n;
   }
+  // Ghi trực tiếp thay vì users.setSetting: cần xóa khóa khi để trống và gói trong một giao dịch.
   const put = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
   const apply = (k, v) => (v === null ? del.run(k) : put.run(k, String(v)));
@@ -114,7 +115,7 @@ function upcomingMilestones(db, today, { soldierId } = {}) {
       }
     }
   }
-  items.sort((a, b) => a.due_date.localeCompare(b.due_date) || a.full_name.localeCompare(b.full_name, 'vi'));
+  items.sort((a, b) => a.due_date.localeCompare(b.due_date) || a.full_name.localeCompare(b.full_name, 'vi') || a.kind.localeCompare(b.kind));
   return { items, missingConfig: [...missing] };
 }
 
@@ -123,7 +124,7 @@ function soldierStats(db, today) {
   const onLeaveToday = db.prepare(
     `SELECT COUNT(DISTINCT l.soldier_id) c
        FROM soldier_leaves l JOIN soldiers s ON s.id = l.soldier_id
-      WHERE s.status = 'dang_cong_tac' AND l.from_date <= ? AND l.to_date >= ?`
+      WHERE s.status = 'dang_cong_tac' AND l.from_date IS NOT NULL AND l.from_date <= ? AND COALESCE(l.to_date, l.from_date) >= ?`
   ).get(today, today).c;
   const needAttention = db.prepare(
     `SELECT s.id AS soldier_id, s.full_name, t.level, t.date
