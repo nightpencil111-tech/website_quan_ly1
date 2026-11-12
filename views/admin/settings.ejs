@@ -38,8 +38,9 @@ const val = function (v) { return v === null || v === undefined ? '' : v; };
 <form method="post" action="/admin/settings/unit-info" class="form-card">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <p class="muted">Các thông tin này tự điền vào văn bản Word (tiêu ngữ, đơn vị, người ký...). Để trống ô nào thì văn bản để trống chỗ đó.</p>
+  <p class="muted">Văn bản in đúng chữ hoa/thường như đồng chí gõ: cấp trên, đơn vị, Đảng ủy, Chi bộ, chức vụ người ký thường viết <strong>IN HOA</strong> (ví dụ TIỂU ĐOÀN 1, CHÍNH TRỊ VIÊN); địa danh, cấp bậc, họ tên viết hoa chữ cái đầu (ví dụ Đồng Nai, Thượng úy).</p>
   <% Object.keys(unitKeys).forEach(function (k) { %>
-    <label><%= unitKeys[k] %> <input type="text" name="<%= k %>" maxlength="120" value="<%= unit[k] %>"></label>
+    <label><%= unitKeys[k] %> <input type="text" name="<%= k %>" maxlength="120" value="<%= unit[k] %>" placeholder="vd: <%= (typeof unitExamples !== 'undefined' && unitExamples[k]) || '' %>"></label>
   <% }) %>
   <button type="submit" class="btn btn-primary">Lưu thông tin đơn vị</button>
 </form>

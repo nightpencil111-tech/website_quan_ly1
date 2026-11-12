@@ -49,3 +49,14 @@ test('demo: --force chạy được và in cảnh báo đặt lại mật khẩu
   fillDemo(db, { force: true, log: (m) => lines.push(m) });
   assert.ok(lines.some((l) => l.includes('CẢNH BÁO') && l.includes('Demo@1234')));
 });
+
+test('dữ liệu thử: ngày sinh quân nhân khác nhau, không trùng ngày/tháng hôm nay', () => {
+  const { today } = require('../src/util/date');
+  const db = makeDb();
+  seed(db);
+  fillDemo(db);
+  const rows = db.prepare('SELECT birth_date FROM soldiers WHERE birth_date IS NOT NULL').all().map((r) => r.birth_date.slice(5));
+  assert.ok(rows.length >= 5);
+  assert.ok(new Set(rows).size >= rows.length - 1, rows.join(','));
+  assert.ok(!rows.includes(today().slice(5)), rows.join(','));
+});

@@ -184,7 +184,8 @@ function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
     const [name, rank, position, u, enlist, rankM, youthY, partyM, officialM] = p;
     return soldiers.createSoldier(db, {
       full_name: name, gender: 'nam', rank, position, unit_id: units[u],
-      birth_date: addMonths(t0, -12 * (19 + (i % 5))), enlist_date: mo(enlist), rank_date: mo(rankM),
+      // Ngày/tháng sinh khác nhau theo từng người (cố định theo chỉ số), không trùng hôm nay.
+      birth_date: addDays(addMonths(t0, -12 * (19 + (i % 5))), -(17 + ((i * 37) % 300))), enlist_date: mo(enlist), rank_date: mo(rankM),
       youth_join_date: youthY ? yr(Math.min(youthY, 6)) : null,
       party_join_date: partyM ? mo(partyM) : null,
       party_official_date: officialM ? mo(officialM) : null,
@@ -196,7 +197,7 @@ function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
   // ctv
   const ctvSid = soldiers.createSoldier(db, {
     full_name: 'Trần Quang Huy', gender: 'nam', rank: 'Thiếu úy', position: 'Chính trị viên phó đại đội', unit_id: units[0],
-    birth_date: addMonths(t0, -12 * 27), enlist_date: addMonths(t0, -12 * 6), rank_date: addMonths(t0, -12 * 2),
+    birth_date: addDays(addMonths(t0, -12 * 27), -143), enlist_date: addMonths(t0, -12 * 6), rank_date: addMonths(t0, -12 * 2),
     party_join_date: addMonths(t0, -12 * 5), party_official_date: addMonths(t0, -12 * 4), hometown: 'Hải Dương',
     ethnicity: 'Kinh', education: 'Đại học', user_id: mgrId,
   }, admin.id);

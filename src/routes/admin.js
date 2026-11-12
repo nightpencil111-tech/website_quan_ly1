@@ -157,7 +157,7 @@ module.exports = (db) => {
     title: 'Cài đặt hệ thống', tab: 'settings', error, saved,
     threshold: value !== undefined ? value : users.getOverloadThreshold(db),
     ms: milestones.getMilestoneSettings(db), msRanks: RANKS.filter((k) => !RANKS_WITHOUT_INTERVAL.includes(k)),
-    msForm: null, msError: null, unit: unitInfo.getUnitInfo(db), unitKeys: unitInfo.UNIT_KEYS, unitError: null, ...extra,
+    msForm: null, msError: null, unit: unitInfo.getUnitInfo(db), unitKeys: unitInfo.UNIT_KEYS, unitExamples: unitInfo.UNIT_EXAMPLES, unitError: null, ...extra,
   });
   r.get('/admin/settings', (req, res) => renderSettings(res, null, req.query.saved === '1'));
   r.post('/admin/settings', handle((req, res) => {

@@ -80,7 +80,7 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 | Vai trò | Quyền chính |
 |---|---|
 | Quản trị viên (`admin`) | Toàn quyền: tài khoản, đơn vị, cài đặt, nhật ký, sao lưu, đồng thời có mọi quyền của quản lý |
-| Quản lý (`manager`, ví dụ chính trị viên) | Giao việc, sửa/xóa việc, duyệt hoàn thành, xem quân số, báo cáo, hiệu suất, lịch, mẫu và việc định kỳ |
+| Quản lý (`manager`, ví dụ chính trị viên) | Giao việc, sửa/xóa việc, duyệt hoàn thành, xem quân số, báo cáo, hiệu suất, lịch, mẫu và việc định kỳ; **Văn bản**: tạo văn bản Word từ mẫu, tải mẫu riêng lên và quản lý mẫu |
 | Chiến sĩ (`member`) | Xem và cập nhật việc được giao (chưa làm → đang làm → chờ duyệt), checklist, bình luận, xem lịch |
 
 ## 9. Chức năng
@@ -166,7 +166,7 @@ Văn bản không bao giờ chứa dữ liệu tư tưởng hay ghi chú hoàn c
 ### Tải mẫu riêng
 
 1. **Văn bản → Tải mẫu lên**, chọn tệp **.docx** (tối đa 5MB). Tệp Word cũ `.doc` thì mở bằng Word, chọn **Save As** (Lưu thành) và đổi kiểu thành `.docx` rồi tải lại.
-2. Hệ thống tự tìm các chỗ cần điền: nhãn như "Họ và tên: ......", "Ngày sinh: ......", "Quê quán: ______" (chỗ trống là dấu chấm, gạch dưới hoặc khoảng trắng sau nhãn, kể cả khi Word tách nhãn thành nhiều đoạn chữ).
+2. Hệ thống tự tìm các chỗ cần điền: nhãn như "Họ và tên: ......", "Ngày sinh: ......", "Quê quán: ______" (chỗ trống phải là dãy dấu chấm `......`, dấu ba chấm `……` hoặc gạch dưới `______`; nhãn chỉ có dấu hai chấm rồi để trống như "Họ và tên:" thì **không** được nhận ra, đồng chí gõ thêm dấu chấm hoặc tự gõ mã `{ho_ten}`. Nhãn bị Word tách thành nhiều đoạn chữ vẫn nhận ra). Dòng "……, ngày …… tháng …… năm 20……" được nhận là một chỗ (ngày tháng có địa danh); dấu lửng trong câu văn mặc định **bỏ qua**.
 3. Ở trang xem lại, với mỗi chỗ tìm được, chọn: điền tự động bằng một trường của hệ thống (họ tên, ngày sinh, cấp bậc...), tạo **ô nhập tay** mới (gõ khi tạo văn bản), hoặc **bỏ qua**.
 4. Đặt tên mẫu, chọn nhóm và chế độ (văn bản chung / mỗi quân nhân một văn bản / một danh sách nhiều người), rồi **Lưu thành mẫu**. Danh mục đầy đủ các mã trường xem ở **Danh mục ô trống**.
 
@@ -177,7 +177,8 @@ Văn bản không bao giờ chứa dữ liệu tư tưởng hay ghi chú hoàn c
 - Ô trống: gõ mã trong ngoặc nhọn, ví dụ `{ho_ten}`, `{ngay_thang}`, `{don_vi}`. Gõ liền một lần, không đổi kiểu chữ giữa chừng để Word không tách ô. Mã sai hoặc thiếu ngoặc (như `{ho_ten`) sẽ bị báo lỗi bằng tiếng Việt khi lưu mẫu.
 - Bảng lặp theo danh sách: ở dòng dữ liệu của bảng, gõ `{#ds}` ở **ô đầu tiên** và `{/ds}` ở **ô cuối cùng** của dòng đó (ví dụ ô đầu `{#ds}{stt}`, ô cuối `{sdt}{/ds}`). Hệ thống nhân dòng ấy lên cho mỗi quân nhân đã chọn.
 - Giá trị thiếu được để trống, không bao giờ in chữ "undefined".
-- Nếu dữ liệu có dấu ngoặc nhọn (ví dụ trong nội dung gõ tay), chúng được đổi thành ngoặc toàn chiều rộng ｛ ｝ để không bị hiểu nhầm là ô trống.
+- Dấu ngoặc nhọn trong dữ liệu (ví dụ trong nội dung gõ tay) được in nguyên văn `{ }`, không bị hiểu nhầm là ô trống. Riêng dấu ngoặc nhọn đứng lẻ có sẵn **trong tệp mẫu tải lên** (thân văn bản, đầu/chân trang, chú thích, nhận xét, thuộc tính tài liệu) được đổi thành ngoặc toàn chiều rộng ｛ ｝ khi lưu mẫu để mẫu không bị lỗi.
+- Trường nhập nhiều dòng (ví dụ `noi_dung`): `{noi_dung}` đưa cả nội dung vào một đoạn; muốn mỗi dòng thành một đoạn riêng (giữ căn đều, thụt đầu dòng) thì gõ ba đoạn liền nhau `{#noi_dung_doan}`, `{.}`, `{/noi_dung_doan}` (xem **Danh mục ô trống**).
 
 ### Lưu ý bảo mật và xử lý sự cố
 

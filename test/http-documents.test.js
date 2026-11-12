@@ -281,3 +281,15 @@ test('tải lên tệp .doc → hướng dẫn lưu thành .docx', async () => {
     assert.match((await r.json()).error, /Tệp \.doc \(Word cũ\) chưa hỗ trợ: đồng chí mở bằng Word → File → Save As → chọn Word Document \(\.docx\) rồi tải lại\./);
   } finally { await s.close(); }
 });
+
+test('cài đặt thông tin đơn vị: gợi ý chữ hoa trong ô nhập', async () => {
+  const { s } = await boot();
+  try {
+    const a = await loginAs(s.base, 'admin', 'admin123');
+    const html = await (await get(s, a, '/admin/settings')).text();
+    for (const ex of ['TIỂU ĐOÀN 1', 'ĐẠI ĐỘI 1', 'ĐẢNG ỦY TIỂU ĐOÀN 1', 'CHI BỘ ĐẠI ĐỘI 1', 'Đồng Nai', 'CHÍNH TRỊ VIÊN', 'Thượng úy']) {
+      assert.ok(html.includes(`placeholder="vd: ${ex}"`), ex);
+    }
+    assert.match(html, /IN HOA/);
+  } finally { await s.close(); }
+});
