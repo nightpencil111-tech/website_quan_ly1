@@ -5,6 +5,9 @@ const express = require('express');
 const { requireLogin, requireRole } = require('../auth');
 const users = require('../services/users');
 const audit = require('../services/audit');
+const soldiers = require('../services/soldiers');
+const milestones = require('../services/milestones');
+const { RANKS, RANKS_WITHOUT_INTERVAL } = require('../util/ranks');
 const { AppError } = require('../util/errors');
 const { today } = require('../util/date');
 const { LABELS } = require('../util/text');
@@ -35,6 +38,7 @@ module.exports = (db) => {
 
   const formCtx = (extra) => ({
     units: users.listUnits(db), roles: LABELS.role, party: users.PARTY, error: null, ...extra,
+    unlinked: soldiers.listUnlinked(db), linked: extra && extra.target ? soldiers.findByUser(db, extra.target.id) : null,
   });
   const idOf = (req) => Number(req.params.id);
 
@@ -48,9 +52,24 @@ module.exports = (db) => {
     }
   };
 
+  // Hồ sơ được chọn phải tồn tại và chưa liên kết với tài khoản khác. Trả về id hoặc null.
+  const checkSoldierChoice = (raw, userId) => {
+    const v = String(raw ?? '').trim();
+    if (!v) return null;
+    const sid = Number(v);
+    const sol = Number.isInteger(sid) ? soldiers.getSoldier(db, sid) : null;
+    if (!sol) throw new AppError('Hồ sơ quân nhân không tồn tại');
+    if (sol.user_id && sol.user_id !== userId) throw new AppError('Hồ sơ này đã được liên kết với tài khoản khác');
+    return sid;
+  };
+
   // ---- Tài khoản ----
+  const listWithLinks = () => {
+    const link = new Map(soldiers.listSoldiers(db, {}).filter((x) => x.user_id).map((x) => [x.user_id, x]));
+    return users.listUsers(db, { includeInactive: true }).map((u) => ({ ...u, soldier: link.get(u.id) || null }));
+  };
   const renderList = (req, res, extra = {}) => res.render('admin/users', {
-    title: 'Quản trị tài khoản', tab: 'users', users: users.listUsers(db, { includeInactive: true }),
+    title: 'Quản trị tài khoản', tab: 'users', users: listWithLinks(),
     roles: LABELS.role, party: users.PARTY, error: null, ...extra,
   });
 
@@ -61,7 +80,10 @@ module.exports = (db) => {
   });
 
   r.post('/admin/users', handle((req, res) => {
+    // Kiểm tra liên kết trước khi tạo tài khoản để không tạo dở dang.
+    const sid = checkSoldierChoice(req.body.soldier_id, null);
     const { id, tempPassword } = users.createUser(db, req.body, req.user.id);
+    if (sid !== null) soldiers.linkUser(db, sid, id, req.user.id);
     res.render('admin/temp-password', {
       title: 'Mật khẩu tạm', tab: 'users', target: users.getUser(db, id), tempPassword, created: true,
     });
@@ -81,7 +103,13 @@ module.exports = (db) => {
   });
 
   r.post('/admin/users/:id', loadTarget, handle((req, res) => {
+    const sid = checkSoldierChoice(req.body.soldier_id, req.target.id);
     users.updateUser(db, req.target.id, req.body, req.user.id);
+    const cur = soldiers.findByUser(db, req.target.id);
+    if ((cur ? cur.id : null) !== sid) {
+      if (cur) soldiers.linkUser(db, cur.id, null, req.user.id);
+      if (sid !== null) soldiers.linkUser(db, sid, req.target.id, req.user.id);
+    }
     res.redirect('/admin/users');
   }, (req, res, e) => {
     res.status(400).render('admin/user-form', formCtx({ title: 'Sửa tài khoản', tab: 'users', target: req.target, form: { ...req.body, username: req.target.username }, error: e.message }));
@@ -91,7 +119,7 @@ module.exports = (db) => {
     users.setActive(db, req.target.id, req.body.active === '1', req.user.id);
     res.redirect('/admin/users');
   }, (req, res, e) => res.status(400).render('admin/users', {
-    title: 'Quản trị tài khoản', tab: 'users', users: users.listUsers(db, { includeInactive: true }),
+    title: 'Quản trị tài khoản', tab: 'users', users: listWithLinks(),
     roles: LABELS.role, party: users.PARTY, error: e.message,
   })));
 
@@ -99,7 +127,7 @@ module.exports = (db) => {
     const tempPassword = users.resetPassword(db, req.target.id, req.user.id);
     res.render('admin/temp-password', { title: 'Mật khẩu tạm', tab: 'users', target: req.target, tempPassword, created: false });
   }, (req, res, e) => res.status(400).render('admin/users', {
-    title: 'Quản trị tài khoản', tab: 'users', users: users.listUsers(db, { includeInactive: true }),
+    title: 'Quản trị tài khoản', tab: 'users', users: listWithLinks(),
     roles: LABELS.role, party: users.PARTY, error: e.message,
   })));
 
@@ -122,9 +150,11 @@ module.exports = (db) => {
   }, (req, res, e) => renderUnits(res, e.message, 400)));
 
   // ---- Cài đặt ----
-  const renderSettings = (res, error, saved, status = 200, value) => res.status(status).render('admin/settings', {
+  const renderSettings = (res, error, saved, status = 200, value, extra = {}) => res.status(status).render('admin/settings', {
     title: 'Cài đặt hệ thống', tab: 'settings', error, saved,
     threshold: value !== undefined ? value : users.getOverloadThreshold(db),
+    ms: milestones.getMilestoneSettings(db), msRanks: RANKS.filter((k) => !RANKS_WITHOUT_INTERVAL.includes(k)),
+    msForm: null, msError: null, ...extra,
   });
   r.get('/admin/settings', (req, res) => renderSettings(res, null, req.query.saved === '1'));
   r.post('/admin/settings', handle((req, res) => {
@@ -137,6 +167,26 @@ module.exports = (db) => {
     audit.log(db, req.user.id, 'settings_update', 'overload_threshold', String(n));
     res.redirect('/admin/settings?saved=1');
   }, (req, res, e) => renderSettings(res, e.message, false, 400, req.body.overload_threshold)));
+
+  r.post('/admin/settings/milestones', handle((req, res) => {
+    const b = req.body;
+    const intervals = {};
+    for (const [k, v] of Object.entries(b)) {
+      const m = /^rank_intervals\[(.+)\]$/.exec(k);
+      if (m) intervals[m[1]] = v;
+    }
+    if (b.rank_intervals && typeof b.rank_intervals === 'object') Object.assign(intervals, b.rank_intervals);
+    milestones.saveMilestoneSettings(db, { ...b, rank_intervals: intervals }, req.user.id);
+    res.redirect('/admin/settings?saved=1');
+  }, (req, res, e) => {
+    const b = req.body;
+    const ri = {};
+    for (const [k, v] of Object.entries(b)) {
+      const m = /^rank_intervals\[(.+)\]$/.exec(k);
+      if (m) ri[m[1]] = v;
+    }
+    renderSettings(res, null, false, 400, undefined, { msError: e.message, msForm: { ...b, rank_intervals: ri } });
+  }));
 
   // ---- Nhật ký ----
   r.get('/admin/audit', (req, res) => {

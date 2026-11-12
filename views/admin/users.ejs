@@ -4,7 +4,7 @@
 <p><a class="btn btn-primary" href="/admin/users/new">Thêm tài khoản</a></p>
 <div class="table-wrap">
 <table class="table">
-  <thead><tr><th>Họ tên</th><th>Tên đăng nhập</th><th>Cấp bậc / Chức vụ</th><th>Đơn vị</th><th>Vai trò</th><th>Đảng/Đoàn</th><th>Việc đang làm</th><th>Trạng thái</th><th></th></tr></thead>
+  <thead><tr><th>Họ tên</th><th>Tên đăng nhập</th><th>Cấp bậc / Chức vụ</th><th>Đơn vị</th><th>Hồ sơ quân nhân</th><th>Vai trò</th><th>Đảng/Đoàn</th><th>Việc đang làm</th><th>Trạng thái</th><th></th></tr></thead>
   <tbody>
   <% users.forEach(function (u) { %>
     <tr class="<%= u.active ? '' : 'row-inactive' %>">
@@ -12,6 +12,7 @@
       <td><%= u.username %></td>
       <td><%= [u.rank, u.position].filter(Boolean).join(' · ') %></td>
       <td><%= u.unit_name || '' %></td>
+      <td><% if (u.soldier) { %><a href="/soldiers/<%= u.soldier.id %>"><%= u.soldier.full_name %></a><% } else { %>–<% } %></td>
       <td><%= roles[u.role] %></td>
       <td><%= party[u.party_status] %></td>
       <td><%= u.open_tasks %></td>

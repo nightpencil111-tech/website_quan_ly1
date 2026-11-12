@@ -1,0 +1,28 @@
+<h1>Mốc sắp đến</h1>
+<p><a href="/soldiers">&larr; Danh sách hồ sơ</a></p>
+<% if (missing.length) { %>
+<div class="alert alert-error">
+  <strong>Chưa cấu hình:</strong> <%= missingText %>.
+  <% if (isAdmin) { %><a href="/admin/settings">Cấu hình thời hạn nhắc mốc</a><% } else { %>Đề nghị chỉ huy cấu hình.<% } %>
+</div>
+<% } %>
+<% groups.forEach(function (g) { %>
+<section class="panel">
+  <h2><%= g.label %></h2>
+  <% if (!g.items.length) { %><p class="muted">Không có mốc nào trong thời gian báo trước.</p><% } else { %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Họ và tên</th><th>Đơn vị</th><th>Ngày đến hạn</th><th>Còn lại</th></tr></thead>
+    <tbody>
+    <% g.items.forEach(function (i) { %>
+      <tr>
+        <td><a href="/soldiers/<%= i.soldier_id %>"><%= i.full_name %></a></td>
+        <td><%= i.unit_name || '–' %></td>
+        <td><%= fmtDate(i.due_date) %></td>
+        <td><% if (i.days_left < 0) { %><span style="color:#b00020">quá hạn <%= -i.days_left %> ngày</span><% } else { %>còn <%= i.days_left %> ngày<% } %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</section>
+<% }) %>

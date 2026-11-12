@@ -18,6 +18,28 @@ const cards = [
   <% }) %>
 </div>
 
+<% if (soldierBox) { %>
+<div class="stat-grid">
+  <a class="stat-card" href="/soldiers"><span class="stat-n"><%= soldierBox.stats.onLeaveToday %></span><span class="stat-l">Đang nghỉ phép</span></a>
+  <a class="stat-card<%= soldierBox.stats.needAttention.length ? ' warn' : '' %>" href="/soldiers"><span class="stat-n"><%= soldierBox.stats.needAttention.length %></span><span class="stat-l">Cần quan tâm tư tưởng</span></a>
+</div>
+<% if (soldierBox.stats.needAttention.length) { %>
+<p class="muted">Cần quan tâm:
+  <% soldierBox.stats.needAttention.forEach(function (n, i) { %><%= i ? ', ' : '' %><a href="/soldiers/<%= n.soldier_id %>?tab=tu-tuong"><%= n.full_name %></a><% }) %></p>
+<% } %>
+<section class="panel">
+  <h2>Mốc sắp đến</h2>
+  <% if (!soldierBox.items.length) { %><p class="muted">Chưa có mốc nào sắp đến.</p><% } else { %>
+  <ul>
+    <% soldierBox.items.forEach(function (i) { %>
+      <li><a href="/soldiers/<%= i.soldier_id %>"><%= i.full_name %></a>: <%= MK[i.kind] %> — <%= fmtDate(i.due_date) %> (<%= i.days_left >= 0 ? 'còn ' + i.days_left + ' ngày' : 'quá hạn ' + (-i.days_left) + ' ngày' %>)</li>
+    <% }) %>
+  </ul>
+  <% } %>
+  <p><a href="/soldiers/milestones">Xem tất cả</a></p>
+</section>
+<% } %>
+
 <% if (stats.overload) { %>
 <section class="panel <%= stats.overload.length ? 'panel-warn' : '' %>">
   <h2>Cảnh báo quá tải</h2>

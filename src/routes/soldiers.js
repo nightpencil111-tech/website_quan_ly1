@@ -87,6 +87,16 @@ module.exports = (db) => {
     });
   });
 
+  r.get('/soldiers/milestones', (req, res) => {
+    const ms = milestones.upcomingMilestones(db, today());
+    const groups = Object.keys(SOLDIER_LABELS.milestoneKind).map((kind) => ({
+      kind, label: SOLDIER_LABELS.milestoneKind[kind], items: ms.items.filter((i) => i.kind === kind),
+    }));
+    res.render('soldiers/milestones', {
+      title: 'Mốc sắp đến', groups, missing: ms.missingConfig, missingText: ms.missingConfig.map((k) => SOLDIER_LABELS.milestoneKind[k]).join('; '), SL: SOLDIER_LABELS, isAdmin: req.user.role === 'admin',
+    });
+  });
+
   r.get('/soldiers/new', (req, res) => {
     res.render('soldiers/form', formCtx({ title: 'Thêm hồ sơ quân nhân', target: null, form: { status: 'dang_cong_tac' } }));
   });

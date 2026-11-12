@@ -27,6 +27,14 @@
     </select>
   </label>
   <label>Điện thoại <input name="phone" value="<%= form.phone || '' %>"></label>
+  <% const selSoldier = form.soldier_id !== undefined ? String(form.soldier_id) : (linked ? String(linked.id) : ''); %>
+  <label>Liên kết hồ sơ quân nhân
+    <select name="soldier_id">
+      <option value="">— Không liên kết —</option>
+      <% if (linked) { %><option value="<%= linked.id %>" <%= selSoldier === String(linked.id) ? 'selected' : '' %>><%= linked.full_name %><%= linked.rank ? ' (' + linked.rank + ')' : '' %> — đang liên kết</option><% } %>
+      <% unlinked.forEach(function (sd) { %><option value="<%= sd.id %>" <%= selSoldier === String(sd.id) ? 'selected' : '' %>><%= sd.full_name %><%= sd.rank ? ' (' + sd.rank + ')' : '' %></option><% }) %>
+    </select>
+  </label>
   <% if (!target) { %><p class="muted">Hệ thống sẽ tạo mật khẩu tạm; người dùng phải đổi ở lần đăng nhập đầu tiên.</p><% } %>
   <button type="submit" class="btn btn-primary">Lưu</button>
   <a class="btn" href="/admin/users">Hủy</a>

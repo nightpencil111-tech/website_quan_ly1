@@ -10,3 +10,26 @@
   <button type="submit" class="btn btn-primary">Lưu</button>
 </form>
 <p><a class="btn" href="/admin/backup">Tải bản sao lưu dữ liệu</a></p>
+<%
+const f = msForm || { party_probation_months: ms.party_probation_months, service_months: ms.service_months, reminder_days: ms.reminder_days, rank_intervals: ms.rank_intervals };
+const val = function (v) { return v === null || v === undefined ? '' : v; };
+%>
+<h2>Thời hạn nhắc mốc</h2>
+<% if (msError) { %><div class="alert alert-error"><%= msError %></div><% } %>
+<form method="post" action="/admin/settings/milestones" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <p class="muted">Để trống nếu chưa xác định; hệ thống sẽ không nhắc mốc đó.</p>
+  <label>Thời gian đảng viên dự bị (tháng) <input type="number" name="party_probation_months" min="1" step="1" value="<%= val(f.party_probation_months) %>"></label>
+  <label>Thời hạn phục vụ tại ngũ (tháng) <input type="number" name="service_months" min="1" step="1" value="<%= val(f.service_months) %>"></label>
+  <label>Số ngày báo trước <input type="number" name="reminder_days" min="1" step="1" value="<%= val(f.reminder_days) %>"></label>
+  <h3>Niên hạn xét thăng quân hàm (tháng)</h3>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Cấp bậc</th><th>Niên hạn (tháng)</th></tr></thead>
+    <tbody>
+    <% msRanks.forEach(function (rk) { %>
+      <tr><td><%= rk %></td><td><input type="number" name="rank_intervals[<%= rk %>]" min="1" step="1" value="<%= val((f.rank_intervals || {})[rk]) %>"></td></tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <button type="submit" class="btn btn-primary">Lưu thời hạn nhắc mốc</button>
+</form>
