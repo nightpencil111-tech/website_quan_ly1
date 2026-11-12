@@ -24,7 +24,7 @@
   <tbody><% d.duplicates.forEach(function (e) { %><tr><td><%= e.row %></td><td><%= e.full_name %></td></tr><% }) %></tbody>
 </table></div>
 <% } %>
-<div class="actions">
+<div class="btn-row">
   <% if (d.valid.length) { %>
   <form method="post" action="/soldiers/import/<%= draftId %>/confirm" style="display:inline">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
