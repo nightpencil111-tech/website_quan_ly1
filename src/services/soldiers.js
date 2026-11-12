@@ -2,6 +2,7 @@ const { AppError } = require('../util/errors');
 const { fold } = require('../util/text');
 const { RANKS, SOLDIER_LABELS } = require('../util/ranks');
 const audit = require('./audit');
+const { today, daysBetween } = require('../util/date');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_FIELDS = {
@@ -172,7 +173,51 @@ function listUnlinked(db) {
   return db.prepare(`${SELECT} WHERE s.user_id IS NULL ORDER BY s.full_name COLLATE NOCASE, s.id`).all().map(decorate);
 }
 
+// Số ngày phép năm (kind='phep', tính cả hai đầu) nằm trong năm của `now`.
+function leaveDays(leaves, now) {
+  const y = now.slice(0, 4);
+  const lo = `${y}-01-01`;
+  const hi = `${y}-12-31`;
+  let total = 0;
+  for (const l of leaves) {
+    if (l.kind !== 'phep' || !l.from_date) continue;
+    const from = l.from_date < lo ? lo : l.from_date;
+    const toRaw = l.to_date || l.from_date;
+    const to = toRaw > hi ? hi : toRaw;
+    if (to < from) continue;
+    total += daysBetween(from, to) + 1;
+  }
+  return total;
+}
+
+function getProfile(db, id, now = today()) {
+  const soldier = getSoldier(db, id);
+  if (!soldier) return null;
+  const items = require('./soldierItems');
+  const leaves = items.listItems(db, 'leave', id);
+  return {
+    soldier,
+    family: items.listItems(db, 'family', id),
+    career: items.listItems(db, 'career', id),
+    awards: items.listItems(db, 'award', id),
+    leaves,
+    thoughts: items.listItems(db, 'thought', id),
+    leaveDaysThisYear: leaveDays(leaves, now),
+  };
+}
+
+// Bản sao cho tài khoản member: không có tư tưởng, không có ghi chú hoàn cảnh.
+function redactForMember(profile) {
+  const { thoughts, ...rest } = profile;
+  return {
+    ...rest,
+    soldier: { ...profile.soldier },
+    family: (profile.family || []).map(({ hardship_note, ...f }) => f),
+  };
+}
+
 module.exports = {
+  validDate, getProfile, redactForMember,
   createSoldier, updateSoldier, deleteSoldier, getSoldier, listSoldiers,
   findByUser, linkUser, listUnlinked, partyState,
 };
