@@ -1,5 +1,6 @@
 // Kết xuất mẫu Word (.docx) bằng docxtemplater, kiểm tra mẫu và nén nhiều file.
 const Docxtemplater = require('docxtemplater');
+const zlib = require('node:zlib');
 const PizZip = require('pizzip');
 const { AppError } = require('../util/errors');
 
@@ -21,6 +22,31 @@ function ownParser(tag) {
 }
 const OPTIONS = { parser: ownParser, paragraphLoop: true, linebreaks: true, nullGetter: () => '', errorLogging: false };
 
+// Chống "bom nén": tệp vài KB giải nén ra hàng GB làm sập máy chủ. Kiểm tra kích thước khai báo trong
+// mục lục zip, rồi giải nén thử có giới hạn (không tin kích thước khai báo) trước khi pizzip giải nén thật.
+const MAX_PART = 20 * 1024 * 1024;
+const MAX_TOTAL = 50 * 1024 * 1024;
+const TOO_BIG = 'Tệp Word quá lớn hoặc không hợp lệ';
+const DEFLATE = '\x08\x00';
+
+function checkZipSize(zip) {
+  let total = 0;
+  for (const f of Object.values(zip.files)) {
+    const d = f._data;
+    if (f.dir || !d || typeof d.uncompressedSize !== 'number') continue; // phần tạo trong bộ nhớ
+    const size = d.uncompressedSize;
+    total += size;
+    if (size > MAX_PART || total > MAX_TOTAL) throw new AppError(TOO_BIG);
+    if (d.compressionMethod === DEFLATE && typeof d.getCompressedContent === 'function') {
+      try {
+        zlib.inflateRawSync(d.getCompressedContent(), { maxOutputLength: Math.max(size, 1) });
+      } catch (e) {
+        throw new AppError(TOO_BIG);
+      }
+    }
+  }
+}
+
 function openZip(buffer) {
   let zip;
   try {
@@ -29,6 +55,7 @@ function openZip(buffer) {
     throw new AppError(BAD_FORMAT);
   }
   if (!zip.file('word/document.xml')) throw new AppError(BAD_FORMAT);
+  checkZipSize(zip);
   return zip;
 }
 
@@ -149,4 +176,4 @@ function buildZip(files) {
   return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }
 
-module.exports = { inspectTemplate, renderDocx, safeFileName, buildZip };
+module.exports = { openZip, inspectTemplate, renderDocx, safeFileName, buildZip };

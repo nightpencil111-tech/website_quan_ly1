@@ -105,3 +105,27 @@ test('inspectTemplate: vòng lặp rỗng nằm trong loops; unopened có thông
   const r = R.inspectTemplate(makeDocx(['abc {/ds}']));
   assert.ok(r.errors.some((e) => /Có \{\/ds\} nhưng chưa có vòng lặp \{#ds\}/.test(e)), r.errors.join('|'));
 });
+
+// Tệp nén "bom": vài chục KB nhưng giải nén ra hàng chục MB.
+function bomb(parts) {
+  const PizZip = require('pizzip');
+  const zip = new PizZip(makeDocx(['a']));
+  for (const [name, mb] of parts) zip.file(name, ' '.repeat(mb * 1024 * 1024));
+  return zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+}
+
+test('zip bomb: một phần > 20MB hoặc tổng > 50MB -> AppError, không giải nén', () => {
+  const D = require('../src/services/docDetect');
+  const one = bomb([['word/document.xml', 30]]);
+  assert.ok(one.length < 1024 * 1024, `${one.length}`);
+  const many = bomb([['word/a.xml', 18], ['word/b.xml', 18], ['word/c.xml', 18]]);
+  for (const buf of [one, many]) {
+    const isBig = (e) => e instanceof AppError && e.message === 'Tệp Word quá lớn hoặc không hợp lệ';
+    assert.throws(() => R.renderDocx(buf, {}), isBig);
+    assert.throws(() => D.detect(buf), isBig);
+    assert.throws(() => D.applySuggestions(buf, []), isBig);
+    assert.deepEqual(R.inspectTemplate(buf).errors, ['Tệp Word quá lớn hoặc không hợp lệ']);
+  }
+  // tệp bình thường vẫn qua
+  assert.deepEqual(R.inspectTemplate(bomb([['word/a.xml', 1]])).errors, []);
+});

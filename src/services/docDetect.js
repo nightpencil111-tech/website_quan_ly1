@@ -1,12 +1,11 @@
 // Tự nhận dạng chỗ cần điền (dấu chấm / gạch dưới sau nhãn) trong mẫu Word và thay bằng ô trống {ma}.
 // Làm việc trực tiếp trên chuỗi XML: ghép chữ các w:t theo từng đoạn (kể cả trong bảng), nên nhãn
 // bị Word tách thành nhiều run vẫn nhận ra; khi thay chỉ sửa nội dung w:t, giữ nguyên run và định dạng.
-const PizZip = require('pizzip');
 const { AppError } = require('../util/errors');
 const { fold } = require('../util/text');
 const { FIELD_CATALOG } = require('./docFields');
+const { openZip } = require('./docRender');
 
-const BAD_FORMAT = 'Tệp không đúng định dạng Word (.docx)';
 const LIST_LOOP = 'ds';
 const CATALOG = new Set(FIELD_CATALOG.map((f) => f.code));
 const CODE_RE = /^[a-z][a-z0-9_]{0,39}$/; // trùng quy tắc mã trường nhập tay của docTemplates
@@ -214,15 +213,8 @@ function analyze(xml) {
 const publicView = ({ id, paragraphIndex, context: ctx, label, code, newCode }) => ({ id, paragraphIndex, context: ctx, label, code, newCode });
 
 function openDocument(buffer) {
-  let zip;
-  try {
-    zip = new PizZip(buffer);
-  } catch (e) {
-    throw new AppError(BAD_FORMAT);
-  }
-  const doc = zip.file('word/document.xml');
-  if (!doc) throw new AppError(BAD_FORMAT);
-  return { zip, xml: doc.asText() };
+  const zip = openZip(buffer); // kiểm tra định dạng và kích thước giải nén
+  return { zip, xml: zip.file('word/document.xml').asText() };
 }
 
 const otherParts = (zip) => Object.keys(zip.files).filter((n) => /^word\/(header|footer)\d*\.xml$/.test(n));
