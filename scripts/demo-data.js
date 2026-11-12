@@ -208,6 +208,8 @@ function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
   items.addItem(db, 'family', sid[0], { relation: 'Mẹ', full_name: 'Phạm Thị Hoa', birth_year: '1970', job: 'Làm nông', address: 'Nam Định' }, A);
   items.addItem(db, 'family', sid[2], { relation: 'Mẹ', full_name: 'Lê Thị Mai', birth_year: '1972', job: 'Buôn bán nhỏ', address: 'Nghệ An', hardship_note: 'HOÀN CẢNH KHÓ KHĂN THỬ: bố mất sớm, mẹ nuôi hai con' }, A);
   items.addItem(db, 'family', sid[5], { relation: 'Bố', full_name: 'Vũ Hữu Tài', birth_year: '1975', job: 'Công nhân', address: 'Bắc Giang' }, A);
+  items.addItem(db, 'family', sid[0], { relation: 'Anh', full_name: 'Nguyễn Văn Cả', birth_year: '1995', job: 'Thợ xây', address: 'Nam Định', hardship_note: 'GHI CHÚ HOÀN CẢNH CỦA AN: gia đình có người ốm nặng' }, A);
+  items.addItem(db, 'thought', sid[0], { date: addDays(t0, -7), content: 'GHI CHÚ TƯ TƯỞNG CỦA AN: yên tâm công tác.', level: 'binh_thuong' }, A);
   // Quá trình công tác
   items.addItem(db, 'career', sid[0], { from_date: mo(20), to_date: mo(12), position: 'Chiến sĩ', unit_text: 'Trung đội 1' }, A);
   items.addItem(db, 'career', sid[0], { from_date: mo(12), position: 'Tiểu đội trưởng', unit_text: 'Trung đội 1' }, A);
@@ -227,7 +229,7 @@ function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
 
   milestones.saveMilestoneSettings(db, {
     party_probation_months: 12, service_months: 24, reminder_days: 30,
-    rank_intervals: { 'Binh nhì': 6, 'Binh nhất': 6, 'Hạ sĩ': 6, 'Trung sĩ': 6, 'Thượng sĩ': 6 },
+    rank_intervals: { 'Binh nhì': 6, 'Binh nhất': 6, 'Hạ sĩ': 6, 'Trung sĩ': 6, 'Thượng sĩ': 6, 'Thiếu úy': 24 },
   }, A);
   return { ctvSid };
 }

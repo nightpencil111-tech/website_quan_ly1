@@ -126,9 +126,12 @@ async function main() {
     await shot('22-cs-kanban', '/kanban');
     await shot('23-cs-ho-so-cua-toi', '/my-profile');
     await shot('24-cs-ho-so-cua-toi-dien-thoai', '/my-profile', { size: MOBILE });
-    await page.goto(base + '/my-profile');
-    const mine = await page.locator('body').innerText();
-    const leaks = ['Tư tưởng', 'TƯ TƯỞNG THỬ', 'HOÀN CẢNH KHÓ KHĂN THỬ'].filter((t) => mine.includes(t));
+    let mine = '';
+    for (const tab of ['ly-lich', 'gia-dinh', 'tu-tuong']) {
+      await page.goto(base + '/my-profile?tab=' + tab);
+      mine += '\n' + await page.locator('body').innerText();
+    }
+    const leaks = ['Tư tưởng', 'GHI CHÚ TƯ TƯỞNG CỦA AN', 'GHI CHÚ HOÀN CẢNH CỦA AN'].filter((t) => mine.includes(t));
     if (leaks.length === 0) pass('Hồ sơ của tôi (cs01): không có dữ liệu tư tưởng/hoàn cảnh khó khăn');
     else fail('Hồ sơ của tôi (cs01) lộ dữ liệu nhạy cảm: ' + leaks.join(', '));
   });
