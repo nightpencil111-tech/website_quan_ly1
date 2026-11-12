@@ -71,3 +71,37 @@ test('buildZip: tên trùng thêm (2), (3), tên Việt giữ nguyên', () => {
   const names = Object.keys(new PizZip(zip).files);
   assert.deepEqual(names, ['Nguyễn Văn A.docx', 'Nguyễn Văn A (2).docx', 'Nguyễn Văn A (3).docx']);
 });
+
+test('render: thẻ prototype (constructor, __proto__, toString) ra rỗng, kể cả trong vòng lặp', () => {
+  const out = R.renderDocx(makeDocx(['[{constructor}][{__proto__}][{toString}][{hasOwnProperty}]']), { a: 1 });
+  assert.equal(docxText(out), '[][][][]');
+  const out2 = R.renderDocx(makeDocx(['{#ds}[{ho_ten}{constructor}{toString}]{/ds}']), { ds: [{ ho_ten: 'An' }, { ho_ten: 'Bình' }] });
+  assert.equal(docxText(out2), '[An][Bình]');
+  const out3 = R.renderDocx(makeDocx(['{#ds}{.},{/ds}']), { ds: ['x', 'y'] });
+  assert.equal(docxText(out3), 'x,y,');
+});
+
+test('safeFileName: tên dành riêng của Windows', () => {
+  for (const n of ['CON', 'con.docx', 'NUL', 'aux.txt', 'COM1', 'LPT9.docx', 'Prn']) {
+    assert.match(R.safeFileName(n), /^_/, n);
+  }
+  assert.equal(R.safeFileName('CON.docx'), '_CON.docx');
+  assert.equal(R.safeFileName('console.docx'), 'console.docx');
+  assert.equal(R.safeFileName('COM10'), 'COM10');
+});
+
+test('safeFileName/buildZip: cắt phần tên, giữ đuôi; hậu tố không vượt giới hạn', () => {
+  const n = R.safeFileName('x'.repeat(300) + '.docx');
+  assert.equal(n.length, 120);
+  assert.ok(n.endsWith('.docx'));
+  const b = Buffer.from('x');
+  const names = Object.keys(new PizZip(R.buildZip([{ name: n, buffer: b }, { name: n, buffer: b }])).files);
+  assert.equal(names.length, 2);
+  assert.ok(names.every((x) => x.length <= 120 && x.endsWith('.docx')));
+});
+
+test('inspectTemplate: vòng lặp rỗng nằm trong loops; unopened có thông báo tiếng Việt', () => {
+  assert.deepEqual(R.inspectTemplate(makeDocx(['{#ds}{/ds}'])).loops, ['ds']);
+  const r = R.inspectTemplate(makeDocx(['abc {/ds}']));
+  assert.ok(r.errors.some((e) => /Có \{\/ds\} nhưng chưa có vòng lặp \{#ds\}/.test(e)), r.errors.join('|'));
+});

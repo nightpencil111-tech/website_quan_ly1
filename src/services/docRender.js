@@ -4,7 +4,22 @@ const PizZip = require('pizzip');
 const { AppError } = require('../util/errors');
 
 const BAD_FORMAT = 'Tệp không đúng định dạng Word (.docx)';
-const OPTIONS = { paragraphLoop: true, linebreaks: true, nullGetter: () => '', errorLogging: false };
+// Chỉ đọc thuộc tính riêng của dữ liệu: {constructor}, {__proto__}, {toString} không bao giờ phân giải qua prototype,
+// và giá trị là hàm bị bỏ qua. '.' trả về chính phần tử của vòng lặp.
+const hasOwn = Object.prototype.hasOwnProperty;
+function ownParser(tag) {
+  const name = String(tag).trim();
+  return {
+    get(scope) {
+      if (name === '.') return scope;
+      if (scope === null || scope === undefined || typeof scope !== 'object') return undefined;
+      if (!hasOwn.call(scope, name)) return undefined;
+      const v = scope[name];
+      return typeof v === 'function' ? undefined : v;
+    },
+  };
+}
+const OPTIONS = { parser: ownParser, paragraphLoop: true, linebreaks: true, nullGetter: () => '', errorLogging: false };
 
 function openZip(buffer) {
   let zip;
@@ -54,11 +69,20 @@ function walkTags(node, tags, loops) {
   }
 }
 
+function collectLoops(items, loops) {
+  for (const it of items || []) {
+    if (it && it.type === 'placeholder' && it.module === 'loop' && it.value && !loops.includes(it.value)) loops.push(it.value);
+    if (it && it.subparsed) collectLoops(it.subparsed, loops);
+  }
+}
+
 function inspectTemplate(buffer) {
   const res = { tags: [], loops: [], errors: [] };
   try {
     const zip = openZip(buffer);
-    const t = new Docxtemplater(zip, OPTIONS).getTags();
+    const dt = new Docxtemplater(zip, OPTIONS);
+    const t = dt.getTags();
+    for (const c of Object.values(dt.compiled || {})) collectLoops(c.postparsed, res.loops);
     const parts = [t.document, ...(t.headers || []), ...(t.footers || [])];
     for (const part of parts) if (part && part.tags) walkTags(part.tags, res.tags, res.loops);
   } catch (e) {
@@ -82,18 +106,31 @@ function renderDocx(buffer, data) {
   }
 }
 
-function safeFileName(name) {
-  let s = String(name == null ? '' : name)
-    .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  s = s.slice(0, 120).replace(/[. ]+$/, '').replace(/^\s+/, '');
-  return s || 'van-ban';
-}
+const MAX_NAME = 120;
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
 function splitExt(name) {
   const i = name.lastIndexOf('.');
   return i > 0 ? [name.slice(0, i), name.slice(i)] : [name, ''];
+}
+
+// Cắt phần tên (không cắt đuôi) để tổng độ dài <= max.
+function fit(base, ext, max) {
+  if (ext.length >= max) ext = ext.slice(0, Math.max(0, max - 1));
+  return base.slice(0, max - ext.length).replace(/[. ]+$/, '') + ext;
+}
+
+function safeFileName(name) {
+  const s = String(name == null ? '' : name)
+    .replace(/[\\/:*?"<>|\x00-\x1f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/, '');
+  let [base, ext] = splitExt(s);
+  base = base.trim();
+  if (!base.replace(/[. ]/g, '')) return 'van-ban';
+  if (RESERVED.test(base)) base = '_' + base;
+  return fit(base, ext, MAX_NAME);
 }
 
 function buildZip(files) {
@@ -102,7 +139,10 @@ function buildZip(files) {
   for (const f of files) {
     const [base, ext] = splitExt(safeFileName(f.name));
     let name = base + ext;
-    for (let n = 2; used.has(name.toLowerCase()); n++) name = `${base} (${n})${ext}`;
+    for (let n = 2; used.has(name.toLowerCase()); n++) {
+      const suffix = ` (${n})`;
+      name = fit(base, '', MAX_NAME - ext.length - suffix.length) + suffix + ext;
+    }
     used.add(name.toLowerCase());
     zip.file(name, f.buffer, { createFolders: false, binary: true });
   }
