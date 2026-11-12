@@ -64,9 +64,13 @@ test('mẫu dựng sẵn: không lỗi, mọi mã thuộc danh mục hoặc trư
     const r = inspectTemplate(T.getTemplateFile(db, t.id));
     assert.deepEqual(r.errors, [], key);
     const manual = new Set(t.manual_fields.map((f) => f.code));
-    for (const tag of r.tags) assert.ok(CATALOG.has(tag) || manual.has(tag), `${key}: ${tag}`);
-    for (const code of manual) assert.ok(r.tags.includes(code), `${key}: thiếu {${code}}`);
-    if (t.mode === 'danh_sach') assert.deepEqual(r.loops, ['ds'], key);
+    for (const tag of r.tags) assert.ok(tag === '.' || CATALOG.has(tag) || manual.has(tag), `${key}: ${tag}`);
+    for (const f of t.manual_fields) {
+      const ok = f.type === 'textarea' ? r.loops.includes(`${f.code}_doan`) : r.tags.includes(f.code);
+      assert.ok(ok, `${key}: thiếu {${f.code}}`);
+    }
+    for (const loop of r.loops) assert.ok(loop === 'ds' || /_doan$/.test(loop), `${key}: ${loop}`);
+    if (t.mode === 'danh_sach') assert.ok(r.loops.includes('ds'), key);
     const trich = t.manual_fields.find((f) => f.code === 'trich_yeu');
     assert.equal(trich.required, true);
     assert.equal(trich.label, 'Trích yếu');
@@ -205,4 +209,63 @@ test('createTemplate/updateTemplate: lỗi cú pháp -> AppError; cảnh báo m�
   assert.equal(T.getTemplate(db, r.id), null);
   assert.throws(() => T.deleteTemplate(db, byKey(db, 'ke_hoach').id, null), AppError);
   assert.equal(T.listTemplates(db).length, 5);
+});
+
+// Các đoạn <w:p> chứa chữ text (lấy cả thuộc tính đoạn).
+function parasWith(buffer, texts) {
+  const xml = new PizZip(buffer).file('word/document.xml').asText();
+  const paras = xml.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+  return texts.map((t) => paras.filter((p) => p.includes(`>${t}</w:t>`)));
+}
+
+test('nội dung nhiều dòng: mỗi dòng một đoạn, đều thụt đầu dòng; dòng trống giữ thành đoạn trống', () => {
+  const { db } = setup();
+  for (const key of ['ke_hoach', 'bao_cao', 'bao_cao_chi_bo']) {
+    const manual = { ...MANUAL, noi_dung: 'I. MỤC ĐÍCH\r\n1. Mục đích\n\n2. Yêu cầu\n\n\n', noi_nhan: '- Tiểu đoàn;\n- Lưu.' };
+    const out = T.generate(db, byKey(db, key).id, { manual }, null, '2026-11-12');
+    const found = parasWith(out.buffer, ['I. MỤC ĐÍCH', '1. Mục đích', '2. Yêu cầu']);
+    for (const list of found) {
+      assert.equal(list.length, 1, key);
+      assert.match(list[0], /<w:ind [^>]*w:firstLine="\d+"/, key);
+      assert.match(list[0], /<w:jc w:val="both"\/>/, key);
+      assert.ok(!/<w:br\/>/.test(list[0]), key);
+    }
+    const xml = new PizZip(out.buffer).file('word/document.xml').asText();
+    const body = xml.slice(xml.indexOf('>I. MỤC ĐÍCH<'), xml.indexOf('>2. Yêu cầu<'));
+    assert.equal((body.match(/<w:p[ >]/g) || []).length, 3, `${key}: đoạn '1. Mục đích', một đoạn trống, đoạn '2. Yêu cầu'`);
+    // Nơi nhận: mỗi dòng một đoạn
+    const nn = parasWith(out.buffer, ['- Tiểu đoàn;', '- Lưu.']);
+    for (const list of nn) assert.equal(list.length, 1, key);
+    assert.ok(!/[{}]/.test(docxText(out.buffer)), key);
+  }
+});
+
+test('mẫu riêng: trường nhiều dòng vẫn dùng được {ma} (chuỗi) và {#ma_doan}{.}{/ma_doan} (từng đoạn)', () => {
+  const { db } = setup();
+  const { id } = T.createTemplate(db, {
+    name: 'Riêng', category: 'khac', mode: 'chung',
+    file: makeDocx(['A: {ghi_chu}', '{#ghi_chu_doan}', '- {.}', '{/ghi_chu_doan}']),
+    manual_fields: [{ code: 'ghi_chu', label: 'Ghi chú', type: 'textarea' }],
+  }, null);
+  const out = T.generate(db, id, { manual: { ghi_chu: 'một\nhai' } }, null, '2026-11-12');
+  assert.equal(docxText(out.buffer), 'A: một\nhai\n- một\n- hai');
+  assert.throws(() => T.normalizeManual([
+    { code: 'ghi_chu', label: 'Ghi chú', type: 'textarea' }, { code: 'ghi_chu_doan', label: 'X', type: 'text' },
+  ]), (e) => e instanceof AppError && /ghi_chu_doan/.test(e.message));
+});
+
+test('dữ liệu nhạy cảm: mẫu có {tu_tuong}, {hardship_note}… kết xuất ra rỗng dù quân nhân có dữ liệu', () => {
+  const { db, ids } = setup();
+  const items = require('../src/services/soldierItems');
+  items.addItem(db, 'family', ids.dv, { relation: 'Cha', full_name: 'Đỗ Cha', hardship_note: 'HOANCANH-BIMAT' }, null);
+  items.addItem(db, 'thought', ids.dv, { content: 'TUTUONG-BIMAT', level: 'dac_biet' }, null);
+  const tags = ['tu_tuong', 'hardship_note', 'thoughts', 'soldier_thoughts', 'family', 'content', 'notes', 'password_hash'];
+  const { id } = T.createTemplate(db, {
+    name: 'Dò', category: 'khac', mode: 'tung_nguoi',
+    file: makeDocx(['{ho_ten}', ...tags.map((t) => `${t}=[{${t}}]`)]), manual_fields: [],
+  }, null);
+  const text = docxText(T.generate(db, id, { soldierIds: [ids.dv] }, null, '2026-11-12').buffer);
+  assert.ok(text.startsWith('Đỗ Văn Đảng'));
+  for (const t of tags) assert.ok(text.includes(`${t}=[]`), `${t}: ${text}`);
+  assert.ok(!/BIMAT|Đỗ Cha/.test(text), text);
 });

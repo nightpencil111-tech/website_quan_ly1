@@ -95,11 +95,28 @@ def new_document(landscape=False):
     sec.header_distance, sec.footer_distance = Cm(1), Cm(1)
 
     # Dòng kết thúc bằng xuống dòng (Shift+Enter, từ ô nhập nhiều dòng) không bị giãn chữ khi căn đều.
-    compat = doc.settings.element.find(qn('w:compat'))
+    settings = doc.settings.element
+    compat = settings.find(qn('w:compat'))
     if compat is None:
         compat = OxmlElement('w:compat')
-        doc.settings.element.append(compat)
+        rsids = settings.find(qn('w:rsids'))
+        if rsids is not None:
+            rsids.addprevious(compat)
+        else:
+            settings.append(compat)
     compat.insert(0, OxmlElement('w:doNotExpandShiftReturn'))
+    # Mở bằng Word 2013 trở lên không bị "Compatibility Mode".
+    for cs in compat.findall(qn('w:compatSetting')):
+        if cs.get(qn('w:name')) == 'compatibilityMode':
+            cs.set(qn('w:val'), '15')
+    preview = settings.find(qn('w:savePreviewPicture'))
+    if preview is not None:
+        settings.remove(preview)
+    tfl = settings.find(qn('w:themeFontLang'))
+    if tfl is not None:
+        for attr in list(tfl.attrib):
+            del tfl.attrib[attr]
+        tfl.set(qn('w:val'), 'vi-VN')
 
     cp = doc.core_properties
     cp.author = ''
@@ -232,8 +249,17 @@ def title(doc, word, kinh_gui=False):
         add_para(doc, 'Kính gửi: {kinh_gui}', CENTER, after=12)
 
 
+def para_loop(container, code, first=False, **fmt):
+    """Mỗi dòng của trường nhiều dòng `code` thành một đoạn riêng cùng định dạng:
+    {#code_doan} / {.} / {/code_doan} — docxtemplater (paragraphLoop) bỏ hai đoạn mở/đóng, lặp đoạn giữa."""
+    loop = code + '_doan'
+    add_para(container, '{#' + loop + '}', first=first, **fmt)
+    add_para(container, '{.}', **fmt)
+    add_para(container, '{/' + loop + '}', **fmt)
+
+
 def body(doc):
-    add_para(doc, '{noi_dung}', JUSTIFY, after=6, line=1.15, first_indent=Cm(1.27))
+    para_loop(doc, 'noi_dung', align=JUSTIFY, after=6, line=1.15, first_indent=Cm(1.27))
 
 
 def signature(doc, left_cm, party=False):
@@ -246,7 +272,7 @@ def signature(doc, left_cm, party=False):
     t.rows[0]._tr.get_or_add_trPr().append(OxmlElement('w:cantSplit'))
     left, right = t.cell(0, 0), t.cell(0, 1)
     add_para(left, 'Nơi nhận:', LEFT, bold=True, italic=True, size=12, first=True)
-    add_para(left, '{noi_nhan}', LEFT, size=11)
+    para_loop(left, 'noi_nhan', align=LEFT, size=11)
     if party:
         add_para(right, 'T/M CHI BỘ', CENTER, bold=True, first=True)
         add_para(right, 'BÍ THƯ', CENTER, bold=True)
@@ -337,6 +363,36 @@ DANG_VIEN = [
 
 FIXED_DATE = (1980, 1, 1, 0, 0, 0)
 
+APP_XML = (b"<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+           b'<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" '
+           b'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'
+           b'<TotalTime>0</TotalTime><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>'
+           b'<LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc>'
+           b'<HyperlinksChanged>false</HyperlinksChanged></Properties>')
+CORE_XML = (b"<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n"
+            b'<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+            b'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" '
+            b'xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
+            b'<cp:revision>1</cp:revision></cp:coreProperties>')
+# Phần thừa của mẫu gốc python-docx: ảnh xem trước (trang dọc trắng), dữ liệu customXml (nguồn trích dẫn).
+DROP_PARTS = re.compile(r'^(docProps/thumbnail\.\w+|customXml/.*)$')
+
+
+def clean_part(name, data):
+    """Bỏ dấu vết python-docx (tên ứng dụng, mẫu Normal.dotm, ảnh xem trước, customXml)."""
+    if name == 'docProps/app.xml':
+        return APP_XML
+    if name == 'docProps/core.xml':
+        return CORE_XML
+    if name == '_rels/.rels':
+        return re.sub(rb'<Relationship [^>]*Target="docProps/thumbnail[^"]*"/>', b'', data)
+    if name == 'word/_rels/document.xml.rels':
+        return re.sub(rb'<Relationship [^>]*Target="\.\./customXml/[^"]*"/>', b'', data)
+    if name == '[Content_Types].xml':
+        data = re.sub(rb'<Override PartName="/customXml/[^"]*"[^>]*/>', b'', data)
+        return re.sub(rb'<Default Extension="jpeg"[^>]*/>', b'', data)
+    return data
+
 
 def save_stable(doc, path):
     """Lưu với thời điểm cố định trong zip để dựng lại không đổi nội dung khi mẫu không đổi."""
@@ -346,9 +402,9 @@ def save_stable(doc, path):
     out = io.BytesIO()
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as dst:
         for info in src.infolist():
-            data = src.read(info.filename)
-            if info.filename == 'docProps/core.xml':
-                data = re.sub(rb'<dcterms:(created|modified)[^>]*>[^<]*</dcterms:\1>', b'', data)
+            if DROP_PARTS.match(info.filename):
+                continue
+            data = clean_part(info.filename, src.read(info.filename))
             zi = zipfile.ZipInfo(info.filename, FIXED_DATE)
             zi.compress_type = zipfile.ZIP_DEFLATED
             dst.writestr(zi, data)

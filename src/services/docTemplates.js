@@ -15,6 +15,9 @@ const MODES = ['chung', 'tung_nguoi', 'danh_sach'];
 const FIELD_TYPES = ['text', 'textarea', 'date'];
 const CATALOG = new Set(FIELD_CATALOG.map((f) => f.code));
 const LIST_LOOP = 'ds';
+// Trường nhiều dòng `x` còn có mảng `x_doan` (mỗi dòng một phần tử) để mẫu lặp đoạn {#x_doan}{.}{/x_doan}:
+// mỗi dòng thành một đoạn riêng, giữ căn đều và thụt đầu dòng của đoạn mẫu.
+const PARA_SUFFIX = '_doan';
 const MAX_FILE = 5 * 1024 * 1024;
 const BUILTIN_DIR = path.join(__dirname, '..', '..', 'templates', 'builtin');
 
@@ -86,6 +89,11 @@ function normalizeManual(list) {
     if (!FIELD_TYPES.includes(type)) throw new AppError(`Kiểu của trường "${label}" không hợp lệ`);
     const required = [true, 1, '1', 'true', 'on'].includes(f.required);
     out.push({ code, label, type, required });
+  }
+  for (const f of out) {
+    if (f.type === 'textarea' && seen.has(f.code + PARA_SUFFIX)) {
+      throw new AppError(`Mã trường nhập tay "${f.code + PARA_SUFFIX}" trùng mã tự sinh của trường nhiều dòng "${f.label}"`);
+    }
   }
   return out;
 }
@@ -233,7 +241,18 @@ function manualData(fields, manual) {
     }
     out[f.code] = v;
   }
+  for (const f of fields) {
+    const key = f.code + PARA_SUFFIX;
+    if (f.type === 'textarea' && !Object.hasOwn(out, key) && !CATALOG.has(key)) out[key] = paragraphs(out[f.code]);
+  }
   return out;
+}
+
+// Chia nội dung nhiều dòng thành các đoạn; bỏ dòng trống ở cuối, giữ dòng trống ở giữa (đoạn trống).
+function paragraphs(text) {
+  const lines = String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+$/u, ''));
+  while (lines.length && !lines[lines.length - 1]) lines.pop();
+  return lines;
 }
 
 // Hồ sơ đã chọn, theo thứ tự đơn vị rồi họ tên (như danh sách quân nhân).

@@ -19,4 +19,11 @@
   <p class="muted">Ví dụ: ô 1 = <code>{#ds}{stt}</code>, ô 2 = <code>{ho_ten}</code>, ô 3 = <code>{cap_bac}</code>, ô cuối = <code>{chuc_vu}{/ds}</code>.</p>
   <p class="muted">Ngoài các mã trên, đồng chí có thể khai báo thêm trường nhập tay (ví dụ <code>{noi_dung}</code>) trong phần "Quản lý mẫu"; các trường này sẽ hiện thành ô nhập khi tạo văn bản.</p>
 </div>
+<h2>Trường nhập nhiều dòng: mỗi dòng một đoạn</h2>
+<div class="card">
+  <p>Với trường nhập tay kiểu "Nhiều dòng" (ví dụ <code>{noi_dung}</code>), mã <code>{noi_dung}</code> đưa cả nội dung vào <strong>một đoạn</strong> (các dòng ngắt bằng xuống dòng mềm).
+    Muốn <strong>mỗi dòng thành một đoạn riêng</strong> (giữ căn đều, thụt đầu dòng như đoạn mẫu), đồng chí gõ ba đoạn liền nhau trong Word, cùng định dạng:</p>
+  <p class="muted"><code>{#noi_dung_doan}</code> (đoạn 1) — <code>{.}</code> (đoạn 2) — <code>{/noi_dung_doan}</code> (đoạn 3).</p>
+  <p class="muted">Tức là thêm <code>_doan</code> vào sau mã trường. Hai đoạn mở/đóng sẽ bị bỏ đi, đoạn giữa được nhân lên cho từng dòng đã nhập.</p>
+</div>
 <p><a class="btn" href="/documents">Quay lại</a></p>
