@@ -7,8 +7,39 @@ const users = require('../src/services/users');
 const tasks = require('../src/services/tasks');
 const events = require('../src/services/events');
 const recurring = require('../src/services/recurring');
+const soldiers = require('../src/services/soldiers');
+const items = require('../src/services/soldierItems');
+const milestones = require('../src/services/milestones');
+const { addMonths } = require('../src/util/date');
 
 const PASSWORD = 'Demo@1234';
+
+// Hồ sơ quân nhân thử (hư cấu). Ngày tính tương đối so với hôm nay để mốc nhắc luôn hiển thị.
+// [họ tên, giới tính, cấp bậc, chức vụ, chỉ số đơn vị, nhập ngũ (tháng trước), nhận cấp bậc (tháng trước), vào Đoàn (năm trước), vào Đảng (tháng trước), chính thức (tháng trước)]
+const PROFILES = [
+  ['Nguyễn Văn An', 'Trung sĩ', 'Tiểu đội trưởng', 0, 20, 9, 6, 15, 4],
+  ['Trần Minh Bảo', 'Hạ sĩ', 'Chiến sĩ', 0, 14, 7, 5],
+  ['Lê Quốc Cường', 'Binh nhất', 'Chiến sĩ', 0, 23.5, 4.5, 5],
+  ['Phạm Đức Dũng', 'Thượng sĩ', 'Tiểu đội trưởng', 1, 30, 12, 8, 30, 20],
+  ['Hoàng Thanh Hải', 'Trung sĩ', 'Phó tiểu đội trưởng', 1, 18, 8, 6, 11.5],
+  ['Vũ Hữu Khang', 'Binh nhì', 'Chiến sĩ', 1, 6, 5.8, 3],
+  ['Đặng Gia Long', 'Hạ sĩ', 'Chiến sĩ', 1, 15, 3, 4],
+  ['Bùi Anh Minh', 'Thượng sĩ', 'Tiểu đội trưởng', 2, 33, 10, 8, 36, 24],
+  ['Ngô Trọng Nghĩa', 'Binh nhất', 'Chiến sĩ', 2, 9, 2, 4],
+  ['Đỗ Thế Phong', 'Hạ sĩ', 'Chiến sĩ', 2, 16, 6.2],
+];
+const EXTRA = [
+  ['Lý Hoàng Anh', 'Binh nhì', 'Chiến sĩ', 0, 4, 4],
+  ['Mai Xuân Bách', 'Binh nhất', 'Chiến sĩ', 0, 12, 6.1],
+  ['Trịnh Công Danh', 'Hạ sĩ', 'Chiến sĩ', 0, 20, 5.9],
+  ['Phan Nhật Đức', 'Binh nhì', 'Chiến sĩ', 1, 5, 5],
+  ['Tạ Quang Giang', 'Trung sĩ', 'Chiến sĩ', 1, 22, 2],
+  ['Cao Văn Hiếu', 'Binh nhất', 'Chiến sĩ', 1, 11, 5],
+  ['Dương Tiến Khải', 'Hạ sĩ', 'Chiến sĩ', 2, 17, 4],
+  ['Lương Thái Lộc', 'Binh nhì', 'Chiến sĩ', 2, 3, 3],
+  ['Kiều Đình Nam', 'Thượng sĩ', 'Chiến sĩ', 2, 28, 7],
+  ['Hà Minh Phúc', 'Binh nhất', 'Chiến sĩ', 2, 10, 3],
+];
 
 const MEMBERS = [
   ['cs01', 'Nguyễn Văn An', 'Trung sĩ', 'Tiểu đội trưởng', 0, 'dang_vien'],
@@ -140,8 +171,65 @@ function fillDemo(db, { force = false, log = () => {} } = {}) {
   for (const [title, type, d] of ev) {
     events.createEvent(db, { title, type, start_date: inMonth(d), end_date: inMonth(d) }, mgrId);
   }
+  seedSoldiers(db, { t0, mgrId, ids, units, admin });
   log(`Đã tạo dữ liệu thử: ${db.prepare('SELECT COUNT(*) AS c FROM tasks').get().c} công việc.`);
   return { password: PASSWORD, accounts: ['admin', 'ctv', ...MEMBERS.map((m) => m[0])] };
+}
+
+function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
+  const mo = (n) => addDays(addMonths(t0, -Math.floor(n)), -Math.round((n % 1) * 30));
+  const yr = (n) => addMonths(t0, -12 * n);
+  const make = (p, userId, i) => {
+    const [name, rank, position, u, enlist, rankM, youthY, partyM, officialM] = p;
+    return soldiers.createSoldier(db, {
+      full_name: name, gender: 'nam', rank, position, unit_id: units[u],
+      birth_date: addMonths(t0, -12 * (19 + (i % 5))), enlist_date: mo(enlist), rank_date: mo(rankM),
+      youth_join_date: youthY ? yr(Math.min(youthY, 6)) : null,
+      party_join_date: partyM ? mo(partyM) : null,
+      party_official_date: officialM ? mo(officialM) : null,
+      hometown: ['Nam Định', 'Thái Bình', 'Nghệ An', 'Hà Tĩnh', 'Bắc Giang'][i % 5],
+      ethnicity: 'Kinh', education: '12/12', phone: `09000000${String(i).padStart(2, '0')}`,
+      user_id: userId,
+    }, admin.id);
+  };
+  // ctv
+  const ctvSid = soldiers.createSoldier(db, {
+    full_name: 'Trần Quang Huy', gender: 'nam', rank: 'Thiếu úy', position: 'Chính trị viên phó đại đội', unit_id: units[0],
+    birth_date: addMonths(t0, -12 * 27), enlist_date: addMonths(t0, -12 * 6), rank_date: addMonths(t0, -12 * 2),
+    party_join_date: addMonths(t0, -12 * 5), party_official_date: addMonths(t0, -12 * 4), hometown: 'Hải Dương',
+    ethnicity: 'Kinh', education: 'Đại học', user_id: mgrId,
+  }, admin.id);
+  const sid = PROFILES.map((p, i) => make(p, ids[i], i));
+  EXTRA.forEach((e, i) => make([e[0], e[1], e[2], e[3], e[4], e[5], 5 - (i % 3), null, null], null, i + 20));
+
+  const A = admin.id;
+  // Gia đình (hardship_note là dữ liệu nhạy cảm)
+  items.addItem(db, 'family', sid[0], { relation: 'Bố', full_name: 'Nguyễn Văn Bình', birth_year: '1968', job: 'Làm nông', address: 'Nam Định' }, A);
+  items.addItem(db, 'family', sid[0], { relation: 'Mẹ', full_name: 'Phạm Thị Hoa', birth_year: '1970', job: 'Làm nông', address: 'Nam Định' }, A);
+  items.addItem(db, 'family', sid[2], { relation: 'Mẹ', full_name: 'Lê Thị Mai', birth_year: '1972', job: 'Buôn bán nhỏ', address: 'Nghệ An', hardship_note: 'HOÀN CẢNH KHÓ KHĂN THỬ: bố mất sớm, mẹ nuôi hai con' }, A);
+  items.addItem(db, 'family', sid[5], { relation: 'Bố', full_name: 'Vũ Hữu Tài', birth_year: '1975', job: 'Công nhân', address: 'Bắc Giang' }, A);
+  // Quá trình công tác
+  items.addItem(db, 'career', sid[0], { from_date: mo(20), to_date: mo(12), position: 'Chiến sĩ', unit_text: 'Trung đội 1' }, A);
+  items.addItem(db, 'career', sid[0], { from_date: mo(12), position: 'Tiểu đội trưởng', unit_text: 'Trung đội 1' }, A);
+  items.addItem(db, 'career', sid[3], { from_date: mo(30), to_date: mo(14), position: 'Chiến sĩ', unit_text: 'Trung đội 2' }, A);
+  // Khen thưởng, kỷ luật
+  items.addItem(db, 'award', sid[0], { kind: 'khen_thuong', date: mo(5), form: 'Giấy khen', reason: 'Hoàn thành xuất sắc nhiệm vụ huấn luyện', decision_no: '12/QĐ-TĐ' }, A);
+  items.addItem(db, 'award', sid[3], { kind: 'khen_thuong', date: mo(8), form: 'Chiến sĩ thi đua', reason: 'Dẫn đầu phong trào thi đua quý', decision_no: '07/QĐ-TĐ' }, A);
+  items.addItem(db, 'award', sid[6], { kind: 'ky_luat', date: mo(2), form: 'Khiển trách', reason: 'Vi phạm giờ giấc sinh hoạt', decision_no: '03/QĐ-KL' }, A);
+  // Nghỉ phép (một người đang nghỉ hôm nay)
+  items.addItem(db, 'leave', sid[1], { kind: 'phep', from_date: addDays(t0, -2), to_date: addDays(t0, 3), destination: 'Thái Bình', note: 'Phép năm' }, A);
+  items.addItem(db, 'leave', sid[4], { kind: 'tranh_thu', from_date: addDays(t0, -40), to_date: addDays(t0, -38), destination: 'Hà Nội' }, A);
+  items.addItem(db, 'leave', sid[8], { kind: 'phep', from_date: addDays(t0, 10), to_date: addDays(t0, 17), destination: 'Nghệ An', note: 'Phép năm' }, A);
+  // Tư tưởng (nhạy cảm; mục mới nhất mức "Cần quan tâm")
+  items.addItem(db, 'thought', sid[2], { date: addDays(t0, -40), content: 'Ổn định, hoàn thành nhiệm vụ.', level: 'binh_thuong' }, A);
+  items.addItem(db, 'thought', sid[2], { date: addDays(t0, -3), content: 'TƯ TƯỞNG THỬ: lo lắng chuyện gia đình, cần trò chuyện thêm.', level: 'can_quan_tam', measures: 'Chính trị viên gặp trực tiếp, thăm hỏi gia đình.' }, A);
+  items.addItem(db, 'thought', sid[6], { date: addDays(t0, -10), content: 'Chấp hành tốt sau khi được nhắc nhở.', level: 'binh_thuong' }, A);
+
+  milestones.saveMilestoneSettings(db, {
+    party_probation_months: 12, service_months: 24, reminder_days: 30,
+    rank_intervals: { 'Binh nhì': 6, 'Binh nhất': 6, 'Hạ sĩ': 6, 'Trung sĩ': 6, 'Thượng sĩ': 6 },
+  }, A);
+  return { ctvSid };
 }
 
 module.exports = { fillDemo, PASSWORD };

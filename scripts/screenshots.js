@@ -5,6 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { createApp } = require('../src/server');
 const { fillDemo, PASSWORD } = require('./demo-data');
+const ExcelJS = require('exceljs');
 
 const OUT = path.join(__dirname, '..', 'screenshots');
 const DESKTOP = { width: 1366, height: 900 };
@@ -55,6 +56,7 @@ async function main() {
     await shot('02-admin-tai-khoan', '/admin/users');
     await shot('03-admin-don-vi', '/admin/units');
     await shot('04-admin-nhat-ky', '/admin/audit');
+    await shot('05-admin-cai-dat-thoi-han', '/admin/settings');
   });
 
   await session('ctv', async (shot, page) => {
@@ -78,6 +80,33 @@ async function main() {
     await shot('18b-ctv-viec-dinh-ky', '/templates?tab=recurring');
     await shot('19-ctv-tong-quan-dien-thoai', '/', { size: MOBILE });
 
+    // Hồ sơ quân nhân
+    await shot('30-ctv-ho-so-danh-sach', '/soldiers');
+    const sid = db.prepare("SELECT id FROM soldiers WHERE full_name = 'Lê Quốc Cường'").get().id;
+    await shot('31-ctv-ho-so-ly-lich', `/soldiers/${sid}?tab=ly-lich`);
+    await shot('32-ctv-ho-so-phep', `/soldiers/${db.prepare("SELECT id FROM soldiers WHERE full_name = 'Trần Minh Bảo'").get().id}?tab=phep`);
+    await shot('33-ctv-ho-so-tu-tuong', `/soldiers/${sid}?tab=tu-tuong`);
+    await shot('34-ctv-moc-nhac', '/soldiers/milestones');
+
+    // Nhập Excel: tạo tệp .xlsx (2 dòng hợp lệ + 1 dòng lỗi) rồi đi qua trang nhập thật
+    const xl = path.join(tmp, 'nhap-thu.xlsx');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Hồ sơ');
+    ws.addRow(['Họ tên*', 'Ngày sinh', 'Giới tính', 'Cấp bậc', 'Ngày nhận cấp bậc', 'Chức vụ', 'Đơn vị', 'Ngày nhập ngũ', 'Quê quán', 'Dân tộc', 'Tôn giáo', 'Văn hóa', 'SĐT', 'Ngày vào Đoàn', 'Ngày vào Đảng', 'Ngày chính thức']);
+    ws.addRow(['Chu Văn Sơn', '12/03/2005', 'Nam', 'Binh nhì', '01/09/2025', 'Chiến sĩ', 'Trung đội 1', '01/09/2025', 'Hà Nam', 'Kinh', '', '12/12', '0900000101', '', '', '']);
+    ws.addRow(['Âu Thị Thu', '20/07/2004', 'Nữ', 'Binh nhất', '01/03/2026', 'Y tế', 'Trung đội 2', '01/09/2025', 'Phú Thọ', 'Kinh', '', '12/12', '0900000102', '', '', '']);
+    ws.addRow(['Mạc Văn Tín', '31/02/2005', 'Nam', 'Binh nhì', '', 'Chiến sĩ', 'Đơn vị không có', '01/09/2025', '', '', '', '', '', '', '', '']);
+    await wb.xlsx.writeFile(xl);
+    await page.goto(base + '/soldiers/import');
+    await page.setInputFiles('#import-file', xl);
+    await Promise.all([page.waitForURL(/\/soldiers\/import\/[0-9a-f-]{36}/, { timeout: 8000 }), page.click('#import-btn')])
+      .catch(() => fail('nhập Excel: không chuyển sang trang xem trước'));
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(OUT, '35-ctv-nhap-excel-xem-truoc.png'), fullPage: true });
+    const prev = await page.locator('body').innerText();
+    if (/Chu Văn Sơn/.test(prev) && /Hợp lệ: 2/.test(prev) && /Lỗi: 1/.test(prev)) pass('nhập Excel: trang xem trước hiện dòng hợp lệ và dòng lỗi');
+    else fail('nhập Excel: trang xem trước thiếu dữ liệu');
+
     // Kéo thả Kanban thật: "Chưa làm" -> "Đang làm"
     await page.goto(base + '/kanban');
     const card = page.locator('.kanban-col[data-status="chua_lam"] .kanban-card').first();
@@ -91,10 +120,17 @@ async function main() {
     else fail(`Kanban kéo thả: việc #${id} không ở cột "Đang làm" sau khi tải lại`);
   });
 
-  await session('cs01', async (shot) => {
+  await session('cs01', async (shot, page) => {
     await shot('20-cs-viec-cua-toi', '/my');
     await shot('21-cs-viec-cua-toi-dien-thoai', '/my', { size: MOBILE });
     await shot('22-cs-kanban', '/kanban');
+    await shot('23-cs-ho-so-cua-toi', '/my-profile');
+    await shot('24-cs-ho-so-cua-toi-dien-thoai', '/my-profile', { size: MOBILE });
+    await page.goto(base + '/my-profile');
+    const mine = await page.locator('body').innerText();
+    const leaks = ['Tư tưởng', 'TƯ TƯỞNG THỬ', 'HOÀN CẢNH KHÓ KHĂN THỬ'].filter((t) => mine.includes(t));
+    if (leaks.length === 0) pass('Hồ sơ của tôi (cs01): không có dữ liệu tư tưởng/hoàn cảnh khó khăn');
+    else fail('Hồ sơ của tôi (cs01) lộ dữ liệu nhạy cảm: ' + leaks.join(', '));
   });
 
   await browser.close();

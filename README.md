@@ -38,7 +38,7 @@ Tài khoản quản trị mặc định: **admin / admin123**. Hệ thống bắ
 
 ## 4. Dữ liệu thử (tùy chọn)
 
-Để xem thử giao diện với dữ liệu hư cấu (3 trung đội, 1 quản lý, 10 chiến sĩ, khoảng 30 công việc, vài sự kiện):
+Để xem thử giao diện với dữ liệu hư cấu (3 trung đội, 1 quản lý, 10 chiến sĩ, khoảng 30 công việc, vài sự kiện, 21 hồ sơ quân nhân kèm gia đình, khen thưởng, nghỉ phép, tư tưởng và cấu hình thời hạn nhắc mốc mẫu):
 
 ```powershell
 npm run demo
@@ -90,16 +90,54 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 - Mẫu công việc và việc định kỳ (hằng tuần/tháng) tự sinh việc.
 - Lịch công tác theo tháng, kết hợp hạn chót công việc.
 - Bảng tổng quan, báo cáo kết quả theo kỳ (sao chép/xuất Excel), thống kê hiệu suất, xuất danh sách việc ra Excel.
+- Hồ sơ quân nhân: lý lịch, gia đình, quá trình công tác, khen thưởng/kỷ luật, nghỉ phép, theo dõi tư tưởng; nhắc mốc (chuyển Đảng chính thức, hết hạn phục vụ, niên hạn thăng quân hàm); nhập/xuất Excel (xem mục 11).
 - Quản trị tài khoản, đơn vị, nhật ký thao tác, sao lưu.
 
 ## 10. Lộ trình
 
-- **Phần 1 (hiện tại):** lõi hệ thống: tài khoản, giao việc, Kanban, lịch, báo cáo.
-- **Phần 2:** quản lý quân số và hồ sơ chi tiết.
+- **Phần 1 (đã xong):** lõi hệ thống: tài khoản, giao việc, Kanban, lịch, báo cáo.
+- **Phần 2 (đã xong):** hồ sơ quân nhân, nhắc mốc, nhập/xuất Excel.
 - **Phần 3:** công tác Đảng, đoàn thể, thi đua – khen thưởng chuyên sâu.
 - **Phần 4:** tổng hợp, thống kê nâng cao và hoàn thiện.
 
-## 11. Xử lý sự cố
+## 11. Hồ sơ quân nhân
+
+### Lưu những gì
+
+Mỗi quân nhân có một hồ sơ gồm: lý lịch (họ tên, ngày sinh, quê quán, dân tộc, tôn giáo, trình độ, cấp bậc và ngày nhận, ngày nhập ngũ, ngày vào Đoàn/Đảng/chuyển chính thức, sức khỏe, điện thoại), thân nhân trong gia đình (kèm ghi chú hoàn cảnh khó khăn), quá trình công tác, khen thưởng và kỷ luật, nghỉ phép/tranh thủ, và nhật ký theo dõi tư tưởng. Hồ sơ có thể liên kết với một tài khoản đăng nhập (chọn ở form tài khoản hoặc ở hồ sơ); xóa tài khoản không làm mất hồ sơ.
+
+### Ai xem được gì
+
+| Vai trò | Quyền với hồ sơ |
+|---|---|
+| Quản trị viên, Quản lý | Xem, thêm, sửa, xóa mọi hồ sơ và mọi mục (kể cả tư tưởng, hoàn cảnh khó khăn); trang Mốc sắp đến; nhập/xuất Excel |
+| Chiến sĩ | Chỉ xem hồ sơ của chính mình ở mục **Hồ sơ của tôi**. **Không** thấy tư tưởng và ghi chú hoàn cảnh khó khăn (kể cả khi xuất dữ liệu). Mọi trang `/soldiers*` khác trả về 403 |
+
+### Cấu hình thời hạn nhắc mốc
+
+Quản trị viên vào **Cài đặt → Thời hạn nhắc mốc** để nhập: thời gian đảng viên dự bị (tháng), thời hạn phục vụ tại ngũ (tháng), niên hạn xét thăng quân hàm theo từng cấp bậc (tháng) và số ngày báo trước (mặc định 30). Mốc nào chưa nhập thì hệ thống **không tính** và hiện cảnh báo "Chưa cấu hình" ở trang Mốc sắp đến.
+
+**Lưu ý:** các con số trong dữ liệu thử (dự bị 12 tháng, phục vụ 24 tháng, niên hạn 6 tháng cho các cấp từ Binh nhì đến Thượng sĩ) chỉ là **số liệu thử để minh họa**. Khi dùng thật, quản trị viên phải tự nhập số liệu đúng theo quy định hiện hành; ứng dụng không có sẵn giá trị mặc định.
+
+### Nhập hồ sơ từ Excel
+
+1. Vào **Hồ sơ quân nhân → Nhập Excel**, bấm **tệp mẫu (.xlsx)** để tải mẫu.
+2. Điền dữ liệu ở sheet "Hồ sơ", mỗi quân nhân một dòng từ dòng 2 (xóa hoặc sửa dòng ví dụ). Chỉ cột **Họ tên** là bắt buộc.
+3. Ngày nhập theo dạng **dd/mm/yyyy** (ô ngày của Excel cũng được nhận).
+4. Cột **Đơn vị** phải trùng tên đơn vị đã có trong hệ thống: quản trị viên cần tạo đơn vị trước khi nhập.
+5. Cột **SĐT** nên đặt định dạng **Text** trước khi gõ để giữ số 0 đầu.
+6. Chọn tệp (.xlsx, tối đa 2MB), bấm **Tải lên và xem trước**. Màn hình xem trước liệt kê dòng hợp lệ, dòng lỗi (kèm lý do) và dòng trùng (cùng họ tên và ngày sinh); dòng lỗi và trùng sẽ bị bỏ qua.
+7. Kiểm tra rồi bấm **Xác nhận nhập**; bản xem trước không xác nhận sẽ hết hạn sau 30 phút. Việc nhập được ghi vào nhật ký.
+
+### Xuất danh sách trích ngang
+
+Ở **Hồ sơ quân nhân**, lọc theo đơn vị, cấp bậc, trạng thái rồi bấm **Xuất Excel** để tải danh sách trích ngang (họ tên, ngày sinh, cấp bậc, chức vụ, đơn vị, nhập ngũ, quê quán, Đảng/Đoàn, trạng thái). Danh sách không chứa dữ liệu tư tưởng. Việc xuất được ghi vào nhật ký.
+
+### Bảo mật dữ liệu tư tưởng
+
+Dữ liệu tư tưởng và hoàn cảnh khó khăn là thông tin nhạy cảm: chỉ cấp tài khoản Quản lý cho người thật sự được phép; không chia sẻ ảnh màn hình hay bản sao lưu (`data.db` chứa toàn bộ) ra ngoài; nhập nội dung ngắn gọn, khách quan, không ghi thông tin mật. Mọi thao tác xem, sửa, nhập, xuất hồ sơ đều có trong **Nhật ký**.
+
+## 12. Xử lý sự cố
 
 - **Cổng 3000 đang được dùng** (`EADDRINUSE`): chọn cổng khác, ví dụ `$env:PORT = 8080; npm start`, rồi mở cổng đó trong tường lửa.
 - **Báo phiên bản Node quá cũ** hoặc lỗi `node:sqlite`: kiểm tra `node -v`, cài lại Node.js 22 LTS (≥ 22.13).
