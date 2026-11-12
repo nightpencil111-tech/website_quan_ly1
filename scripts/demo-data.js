@@ -11,6 +11,7 @@ const soldiers = require('../src/services/soldiers');
 const items = require('../src/services/soldierItems');
 const milestones = require('../src/services/milestones');
 const { addMonths } = require('../src/util/date');
+const { saveUnitInfo } = require('../src/services/unitInfo');
 
 const PASSWORD = 'Demo@1234';
 
@@ -231,6 +232,13 @@ function seedSoldiers(db, { t0, mgrId, ids, units, admin }) {
     party_probation_months: 12, service_months: 24, reminder_days: 30,
     rank_intervals: { 'Binh nhì': 6, 'Binh nhất': 6, 'Hạ sĩ': 6, 'Trung sĩ': 6, 'Thượng sĩ': 6, 'Thiếu úy': 24 },
   }, A);
+
+  // Thông tin đơn vị mẫu (hư cấu) để tự điền vào văn bản Word.
+  saveUnitInfo(db, {
+    cap_tren: 'TIỂU ĐOÀN 1', don_vi: 'ĐẠI ĐỘI 1', dang_uy: 'ĐẢNG ỦY TIỂU ĐOÀN 1', chi_bo: 'CHI BỘ ĐẠI ĐỘI 1',
+    dia_danh: 'Đồng Nai', nguoi_ky_chuc_vu: 'CHÍNH TRỊ VIÊN', nguoi_ky_cap_bac: 'Thượng úy',
+    nguoi_ky_ho_ten: 'Trần Quang Huy', bi_thu_ho_ten: 'Trần Quang Huy',
+  }, admin.id);
   return { ctvSid };
 }
 

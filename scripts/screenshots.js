@@ -52,11 +52,14 @@ async function main() {
     if (problems.length) problems.forEach((p) => fail(`[${username}] ${p}`));
   }
 
-  await session('admin', async (shot) => {
+  await session('admin', async (shot, page) => {
     await shot('02-admin-tai-khoan', '/admin/users');
     await shot('03-admin-don-vi', '/admin/units');
     await shot('04-admin-nhat-ky', '/admin/audit');
     await shot('05-admin-cai-dat-thoi-han', '/admin/settings');
+    await shot('06-admin-thong-tin-don-vi', '/admin/settings', {
+      prepare: async () => { await page.locator('form[action="/admin/settings/unit-info"]').scrollIntoViewIfNeeded(); },
+    });
   });
 
   await session('ctv', async (shot, page) => {
@@ -118,6 +121,70 @@ async function main() {
     const inDoing = await page.locator(`.kanban-col[data-status="dang_lam"] .kanban-card[data-id="${id}"]`).count();
     if (inDoing === 1) pass(`Kanban kéo thả: việc #${id} chuyển từ "Chưa làm" sang "Đang làm" và còn nguyên sau khi tải lại`);
     else fail(`Kanban kéo thả: việc #${id} không ở cột "Đang làm" sau khi tải lại`);
+  });
+
+  // Văn bản Word (Phần 3)
+  await session('ctv', async (shot, page) => {
+    const tid = (key) => db.prepare('SELECT id FROM doc_templates WHERE builtin_key = ?').get(key).id;
+    await shot('40-ctv-van-ban', '/documents');
+    await shot('41-ctv-tao-ke-hoach', `/documents/${tid('ke_hoach')}/generate`, {
+      prepare: async () => {
+        await page.fill('input[name="manual[so_van_ban]"]', '15/KH-ĐĐ1');
+        await page.fill('input[name="manual[trich_yeu]"]', 'tổ chức sinh hoạt chính trị tháng 12');
+        await page.fill('textarea[name="manual[noi_dung]"]', '1. Mục đích, yêu cầu\nNâng cao nhận thức chính trị cho cán bộ, chiến sĩ.\n2. Nội dung, thời gian\nSinh hoạt vào sáng thứ Bảy hằng tuần.');
+        await page.fill('textarea[name="manual[noi_nhan]"]', '- Tiểu đoàn 1;\n- Lưu: VT.');
+      },
+    });
+    await shot('42-ctv-tao-danh-sach-quan-nhan', `/documents/${tid('danh_sach_quan_nhan')}/generate`, {
+      prepare: async () => {
+        await page.fill('input[name="manual[so_van_ban]"]', '08/DS-ĐĐ1');
+        await page.fill('input[name="manual[trich_yeu]"]', 'danh sách quân nhân Trung đội 1');
+        for (const i of [0, 1, 2, 3]) await page.locator('.pick').nth(i).check();
+      },
+    });
+
+    // Tải thật một văn bản Kế hoạch và kiểm tra là tệp .docx (zip, bắt đầu bằng PK)
+    await page.goto(base + `/documents/${tid('ke_hoach')}/generate`);
+    await page.fill('input[name="manual[so_van_ban]"]', '15/KH-ĐĐ1');
+    await page.fill('input[name="manual[trich_yeu]"]', 'tổ chức sinh hoạt chính trị');
+    await page.fill('textarea[name="manual[noi_dung]"]', 'Nội dung thử & kiểm tra {ngoặc}.');
+    const dlRespP = page.waitForResponse((r) => r.request().method() === 'POST' && /\/generate$/.test(r.url()));
+    const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10000 }), page.click('form.form-card button[type="submit"]')])
+      .catch(() => [null]);
+    const dlResp = await dlRespP.catch(() => null);
+    if (!dl || !dlResp) fail('tạo văn bản: không tải được tệp Kế hoạch');
+    else {
+      const f = path.join(tmp, 'ke-hoach-tai-ve.docx');
+      await dl.saveAs(f);
+      const head = fs.readFileSync(f).subarray(0, 2).toString('latin1');
+      const cd = (await dlResp.allHeaders())['content-disposition'] || '';
+      // Lưu ý: suggestedFilename() của Chromium không tin cậy trong môi trường chạy tự động, nên kiểm tra tiêu đề Content-Disposition.
+      if (head === 'PK' && /filename\*=UTF-8''[^;]*\.docx/.test(cd)) pass('tạo văn bản: tải về tệp .docx hợp lệ (bắt đầu bằng PK, tên tệp tiếng Việt trong Content-Disposition)');
+      else fail('tạo văn bản: tệp tải về không phải .docx (' + cd + ', đầu tệp ' + head + ')');
+    }
+
+    // Tải mẫu riêng: docx nhỏ có "Họ và tên: ......" và "Lý do: ______"
+    const docxPath = path.join(tmp, 'mau-rieng.docx');
+    const py = require('node:child_process').spawnSync('python3', ['-c', `
+import docx, sys
+d = docx.Document()
+d.add_paragraph('GIẤY XÁC NHẬN')
+d.add_paragraph('Họ và tên: ......')
+d.add_paragraph('Lý do: ______')
+d.save(sys.argv[1])`, docxPath]);
+    if (py.status !== 0) fail('không dựng được tệp mẫu thử bằng python-docx');
+    else {
+      await page.goto(base + '/documents/templates/upload');
+      await page.setInputFiles('#doc-file', docxPath);
+      await Promise.all([page.waitForURL(/\/documents\/templates\/review\//, { timeout: 8000 }), page.click('#doc-btn')])
+        .catch(() => fail('tải mẫu riêng: không chuyển sang trang xem lại nhận dạng'));
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: path.join(OUT, '43-ctv-tai-mau-xem-lai.png'), fullPage: true });
+      const t = await page.locator('body').innerText();
+      if (/Họ và tên/.test(t) && /Lý do/.test(t)) pass('tải mẫu riêng: trang xem lại nhận dạng hiện "Họ và tên" và "Lý do"');
+      else fail('tải mẫu riêng: trang xem lại thiếu nhãn nhận dạng');
+    }
+    await shot('44-ctv-danh-muc-o-trong', '/documents/fields');
   });
 
   await session('cs01', async (shot, page) => {

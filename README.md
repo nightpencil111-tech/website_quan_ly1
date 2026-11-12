@@ -38,7 +38,7 @@ Tài khoản quản trị mặc định: **admin / admin123**. Hệ thống bắ
 
 ## 4. Dữ liệu thử (tùy chọn)
 
-Để xem thử giao diện với dữ liệu hư cấu (3 trung đội, 1 quản lý, 10 chiến sĩ, khoảng 30 công việc, vài sự kiện, 21 hồ sơ quân nhân kèm gia đình, khen thưởng, nghỉ phép, tư tưởng và cấu hình thời hạn nhắc mốc mẫu):
+Để xem thử giao diện với dữ liệu hư cấu (3 trung đội, 1 quản lý, 10 chiến sĩ, khoảng 30 công việc, vài sự kiện, 21 hồ sơ quân nhân kèm gia đình, khen thưởng, nghỉ phép, tư tưởng, cấu hình thời hạn nhắc mốc và thông tin đơn vị mẫu để thử tạo văn bản Word):
 
 ```powershell
 npm run demo
@@ -91,14 +91,15 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 - Lịch công tác theo tháng, kết hợp hạn chót công việc.
 - Bảng tổng quan, báo cáo kết quả theo kỳ (sao chép/xuất Excel), thống kê hiệu suất, xuất danh sách việc ra Excel.
 - Hồ sơ quân nhân: lý lịch, gia đình, quá trình công tác, khen thưởng/kỷ luật, nghỉ phép, theo dõi tư tưởng; nhắc mốc (chuyển Đảng chính thức, hết hạn phục vụ, niên hạn thăng quân hàm); nhập/xuất Excel (xem mục 11).
+- Văn bản Word: tạo kế hoạch, báo cáo, danh sách quân nhân/đảng viên từ mẫu có sẵn hoặc mẫu riêng, tự điền thông tin đơn vị và hồ sơ quân nhân (xem mục 12).
 - Quản trị tài khoản, đơn vị, nhật ký thao tác, sao lưu.
 
 ## 10. Lộ trình
 
 - **Phần 1 (đã xong):** lõi hệ thống: tài khoản, giao việc, Kanban, lịch, báo cáo.
 - **Phần 2 (đã xong):** hồ sơ quân nhân, nhắc mốc, nhập/xuất Excel.
-- **Phần 3:** công tác Đảng, đoàn thể, thi đua – khen thưởng chuyên sâu.
-- **Phần 4:** tổng hợp, thống kê nâng cao và hoàn thiện.
+- **Phần 3 (đã xong):** kho mẫu văn bản Word: mẫu dựng sẵn, tải mẫu riêng, tự nhận dạng chỗ cần điền, tạo văn bản và danh sách từ hồ sơ.
+- **Phần 4:** trợ lý AI hỗ trợ soạn thảo (tiếp theo).
 
 ## 11. Hồ sơ quân nhân
 
@@ -137,7 +138,55 @@ Quản trị viên vào **Cài đặt → Thời hạn nhắc mốc** để nh�
 
 Dữ liệu tư tưởng và hoàn cảnh khó khăn là thông tin nhạy cảm: chỉ cấp tài khoản Quản lý cho người thật sự được phép; không chia sẻ ảnh màn hình hay bản sao lưu (`data.db` chứa toàn bộ) ra ngoài; nhập nội dung ngắn gọn, khách quan, không ghi thông tin mật. Mọi thao tác xem, sửa, nhập, xuất hồ sơ đều có trong **Nhật ký**.
 
-## 12. Xử lý sự cố
+## 12. Văn bản Word
+
+Mục **Văn bản** (menu bên trái; dành cho Quản trị viên và Quản lý) giúp tạo nhanh văn bản `.docx` từ mẫu, tự điền thông tin đơn vị và hồ sơ quân nhân.
+
+### Bước đầu: cài thông tin đơn vị
+
+Quản trị viên vào **Cài đặt → Thông tin đơn vị** và nhập: cấp trên, đơn vị, Đảng ủy, Chi bộ, địa danh, chức vụ, cấp bậc, họ tên người ký và họ tên bí thư (mỗi ô tối đa 120 ký tự). Các thông tin này tự điền vào đầu văn bản và phần chữ ký. Ô nào để trống thì văn bản để trống chỗ đó (trang tạo văn bản có cảnh báo nếu chưa cài).
+
+### Tạo văn bản
+
+1. Vào **Văn bản**, chọn mẫu rồi bấm **Tạo văn bản**.
+2. Với mẫu cần quân nhân (danh sách, hoặc mỗi người một văn bản): lọc danh sách rồi tích chọn quân nhân. Chọn nhiều người ở mẫu "mỗi người một văn bản" sẽ nhận một tệp nén `.zip` (tên trùng được thêm ` (2)`, ` (3)`).
+3. Nhập các ô cần gõ tay (số văn bản, trích yếu, nội dung, nơi nhận...). Ô "Ngày tháng" để trống sẽ lấy ngày hôm nay, dạng "Địa danh, ngày d tháng m năm yyyy".
+4. Bấm **Tạo và tải văn bản**. Mở tệp bằng Word và rà soát lại trước khi ký, gửi.
+
+Văn bản không bao giờ chứa dữ liệu tư tưởng hay ghi chú hoàn cảnh khó khăn, kể cả khi mẫu có ô như `{tu_tuong}` (ô đó ra trống). Mỗi lần tạo đều ghi vào **Nhật ký**.
+
+### 5 mẫu dựng sẵn
+
+- **Kế hoạch**, **Báo cáo**: văn bản chung, đầu văn bản hai cột (đơn vị | quốc hiệu, tiêu ngữ), nội dung, nơi nhận, chữ ký.
+- **Báo cáo Chi bộ**: đầu văn bản Đảng (Đảng ủy, Chi bộ | Đảng Cộng sản Việt Nam), có dòng "Kính gửi", ký T/M Chi bộ - Bí thư.
+- **Danh sách quân nhân**, **Danh sách đảng viên**: khổ ngang, bảng tự thêm dòng cho từng quân nhân đã chọn.
+
+Đồng chí có thể tải tệp gốc (**Quản lý mẫu → Tải tệp mẫu về**), sửa trong Word rồi tải lại. Mẫu dựng sẵn không xóa được; nếu lỡ sửa hỏng, dùng **Khôi phục mẫu gốc** trong Quản lý mẫu. Lưu ý: mẫu dựng sẵn chỉ có thể thức cơ bản, đồng chí cần đối chiếu với quy định hiện hành của đơn vị.
+
+### Tải mẫu riêng
+
+1. **Văn bản → Tải mẫu lên**, chọn tệp **.docx** (tối đa 5MB). Tệp Word cũ `.doc` thì mở bằng Word, chọn **Save As** (Lưu thành) và đổi kiểu thành `.docx` rồi tải lại.
+2. Hệ thống tự tìm các chỗ cần điền: nhãn như "Họ và tên: ......", "Ngày sinh: ......", "Quê quán: ______" (chỗ trống là dấu chấm, gạch dưới hoặc khoảng trắng sau nhãn, kể cả khi Word tách nhãn thành nhiều đoạn chữ).
+3. Ở trang xem lại, với mỗi chỗ tìm được, chọn: điền tự động bằng một trường của hệ thống (họ tên, ngày sinh, cấp bậc...), tạo **ô nhập tay** mới (gõ khi tạo văn bản), hoặc **bỏ qua**.
+4. Đặt tên mẫu, chọn nhóm và chế độ (văn bản chung / mỗi quân nhân một văn bản / một danh sách nhiều người), rồi **Lưu thành mẫu**. Danh mục đầy đủ các mã trường xem ở **Danh mục ô trống**.
+
+### Tự viết ô trống trong Word
+
+Đồng chí cũng có thể gõ trực tiếp vào mẫu Word:
+
+- Ô trống: gõ mã trong ngoặc nhọn, ví dụ `{ho_ten}`, `{ngay_thang}`, `{don_vi}`. Gõ liền một lần, không đổi kiểu chữ giữa chừng để Word không tách ô. Mã sai hoặc thiếu ngoặc (như `{ho_ten`) sẽ bị báo lỗi bằng tiếng Việt khi lưu mẫu.
+- Bảng lặp theo danh sách: ở dòng dữ liệu của bảng, gõ `{#ds}` ở **ô đầu tiên** và `{/ds}` ở **ô cuối cùng** của dòng đó (ví dụ ô đầu `{#ds}{stt}`, ô cuối `{sdt}{/ds}`). Hệ thống nhân dòng ấy lên cho mỗi quân nhân đã chọn.
+- Giá trị thiếu được để trống, không bao giờ in chữ "undefined".
+- Nếu dữ liệu có dấu ngoặc nhọn (ví dụ trong nội dung gõ tay), chúng được đổi thành ngoặc toàn chiều rộng ｛ ｝ để không bị hiểu nhầm là ô trống.
+
+### Lưu ý bảo mật và xử lý sự cố
+
+- **Không đưa tài liệu mật, tài liệu nội bộ lên bất kỳ dịch vụ bên ngoài nào** (trang web chuyển đổi, soạn thảo trực tuyến...). Mẫu tải lên chỉ nằm trong cơ sở dữ liệu cục bộ của ứng dụng, không gửi ra Internet; vẫn không nên đưa nội dung có độ mật vào mẫu.
+- Tệp tải về mở ra báo "nội dung không đọc được" (unreadable content): đồng chí giữ lại tệp, ghi lại mẫu và dữ liệu đã dùng rồi báo người cài đặt để xử lý.
+- Tải mẫu lên báo lỗi cú pháp: kiểm tra từng cặp ngoặc `{ }` và cặp `{#ds}` / `{/ds}`.
+- Mẫu dựng sẵn do tệp trong thư mục `templates/builtin` tạo ra; sau khi nâng cấp ứng dụng, dùng **Khôi phục mẫu gốc** để nhận bản mẫu mới nhất (sẽ mất chỉnh sửa của đồng chí trên mẫu đó).
+
+## 13. Xử lý sự cố
 
 - **Cổng 3000 đang được dùng** (`EADDRINUSE`): chọn cổng khác, ví dụ `$env:PORT = 8080; npm start`, rồi mở cổng đó trong tường lửa.
 - **Báo phiên bản Node quá cũ** hoặc lỗi `node:sqlite`: kiểm tra `node -v`, cài lại Node.js 22 LTS (≥ 22.13).
