@@ -1,0 +1,5 @@
+<nav class="tabs" aria-label="Các thẻ hồ sơ">
+  <% TABS.forEach(function (t) { %>
+    <a href="<%= base %>?tab=<%= t.key %>" class="<%= tab === t.key ? 'active' : '' %>"><%= t.label %></a>
+  <% }) %>
+</nav>

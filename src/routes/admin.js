@@ -19,6 +19,14 @@ const AUDIT_ACTIONS = {
   rule_create: 'Tạo việc định kỳ', rule_update: 'Sửa việc định kỳ', rule_delete: 'Xóa việc định kỳ',
   event_create: 'Tạo sự kiện lịch', event_update: 'Sửa sự kiện lịch', event_delete: 'Xóa sự kiện lịch',
   settings_update: 'Đổi cài đặt', backup: 'Sao lưu dữ liệu',
+  soldier_view: 'Xem hồ sơ quân nhân', soldier_create: 'Tạo hồ sơ quân nhân', soldier_update: 'Sửa hồ sơ quân nhân',
+  soldier_delete: 'Xóa hồ sơ quân nhân', soldier_link: 'Liên kết tài khoản với hồ sơ',
+  soldier_import: 'Nhập hồ sơ từ Excel', soldier_export: 'Xuất hồ sơ ra Excel', milestone_settings: 'Đổi cài đặt mốc nhắc',
+  soldier_family_create: 'Thêm thân nhân', soldier_family_update: 'Sửa thân nhân', soldier_family_delete: 'Xóa thân nhân',
+  soldier_career_create: 'Thêm quá trình công tác', soldier_career_update: 'Sửa quá trình công tác', soldier_career_delete: 'Xóa quá trình công tác',
+  soldier_award_create: 'Thêm khen thưởng/kỷ luật', soldier_award_update: 'Sửa khen thưởng/kỷ luật', soldier_award_delete: 'Xóa khen thưởng/kỷ luật',
+  soldier_leave_create: 'Thêm nghỉ phép', soldier_leave_update: 'Sửa nghỉ phép', soldier_leave_delete: 'Xóa nghỉ phép',
+  soldier_thought_create: 'Thêm ghi nhận tư tưởng', soldier_thought_update: 'Sửa ghi nhận tư tưởng', soldier_thought_delete: 'Xóa ghi nhận tư tưởng',
 };
 
 module.exports = (db) => {

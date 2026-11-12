@@ -1,0 +1,22 @@
+<h1><%= title %></h1>
+<p class="muted">Hồ sơ: <%= soldier.full_name %></p>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="post" action="/soldiers/<%= soldier.id %>/<%= type %><%= item ? '/' + item.id : '' %>" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% fields.forEach(function (fd) {
+    var val = form[fd[0]] === null || form[fd[0]] === undefined ? '' : form[fd[0]]; %>
+    <label><%= fd[1] %>
+    <% if (fd[2] === 'select') { %>
+      <select name="<%= fd[0] %>">
+        <% if (fd[0] !== 'level') { %><option value="">–</option><% } %>
+        <% Object.keys(SL[fd[3]]).forEach(function (k) { %><option value="<%= k %>" <%= (val || (fd[0] === 'level' ? 'binh_thuong' : '')) === k ? 'selected' : '' %>><%= SL[fd[3]][k] %></option><% }) %>
+      </select>
+    <% } else if (fd[2] === 'textarea') { %>
+      <textarea name="<%= fd[0] %>" rows="3"><%= val %></textarea>
+    <% } else { %>
+      <input type="<%= fd[2] %>" name="<%= fd[0] %>" value="<%= val %>">
+    <% } %></label>
+  <% }) %>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="<%= back %>">Hủy</a>
+</form>

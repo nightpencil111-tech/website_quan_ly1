@@ -1,0 +1,40 @@
+<%
+const COLS = {
+  family: [['relation', 'Quan hệ'], ['full_name', 'Họ tên'], ['birth_year', 'Năm sinh'], ['job', 'Nghề nghiệp'], ['address', 'Nơi ở'], ['hardship_note', 'Hoàn cảnh']],
+  career: [['from_date', 'Từ ngày', 'date'], ['to_date', 'Đến ngày', 'date'], ['position', 'Chức vụ'], ['unit_text', 'Đơn vị']],
+  award: [['kind', 'Loại', 'awardKind'], ['date', 'Ngày', 'date'], ['form', 'Hình thức'], ['reason', 'Lý do'], ['decision_no', 'Số quyết định']],
+  leave: [['kind', 'Loại', 'leaveKind'], ['from_date', 'Từ ngày', 'date'], ['to_date', 'Đến ngày', 'date'], ['destination', 'Nơi đến'], ['note', 'Ghi chú']],
+  thought: [['date', 'Ngày', 'date'], ['level', 'Mức độ', 'thoughtLevel'], ['content', 'Nội dung'], ['measures', 'Biện pháp']],
+};
+const cols = COLS[type].filter(function (c) { return !(c[0] === 'hardship_note' && !manage && rows.length && !('hardship_note' in rows[0])); });
+%>
+<% if (manage) { %><p><a class="btn btn-primary" href="/soldiers/<%= soldierId %>/<%= type %>/new">Thêm</a></p><% } %>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><% cols.forEach(function (c) { %><th><%= c[1] %></th><% }) %><% if (manage) { %><th>Thao tác</th><% } %></tr></thead>
+  <tbody>
+  <% if (!rows.length) { %><tr><td colspan="<%= cols.length + (manage ? 1 : 0) %>" class="muted">Chưa có dữ liệu.</td></tr><% } %>
+  <% rows.forEach(function (row) { %>
+    <tr class="<%= type === 'thought' ? 'level-' + row.level : '' %>">
+      <% cols.forEach(function (c) { %>
+        <td><%
+          var v = row[c[0]];
+          if (v === null || v === undefined || v === '') { %>–<% }
+          else if (c[2] === 'date') { %><%= fmtDate(v) %><% }
+          else if (c[2]) { %><%= SL[c[2]][v] || v %><% }
+          else { %><%= v %><% } %></td>
+      <% }) %>
+      <% if (manage) { %>
+      <td class="actions">
+        <a class="btn" href="/soldiers/<%= soldierId %>/<%= type %>/<%= row.id %>/edit">Sửa</a>
+        <form method="post" action="/soldiers/<%= soldierId %>/<%= type %>/<%= row.id %>/delete" class="inline" onsubmit="return confirm('Xóa mục này? Thao tác không thể hoàn tác.');">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit" class="btn btn-danger">Xóa</button>
+        </form>
+      </td>
+      <% } %>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>

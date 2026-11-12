@@ -165,3 +165,14 @@ body.no-nav .content { max-width: 480px; margin: 40px auto; }
 .report-text { width: 100%; min-height: 420px; font-family: inherit; font-size: 15px; line-height: 1.5; padding: 10px; border: 1px solid var(--border); border-radius: 4px; box-sizing: border-box; }
 .range-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
 .tab-links { display: flex; gap: 8px; margin-bottom: 12px; }
+
+/* Hồ sơ quân nhân */
+.profile-summary { margin-bottom: 16px; }
+.plain { list-style: none; margin: 0; padding: 0; }
+tr.level-can_quan_tam td { background: #fff4d6; }
+tr.level-dac_biet td { background: #fbeaea; }
+@media (max-width: 768px) {
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap .table { min-width: 560px; }
+  .tabs a { padding: 6px 10px; font-size: 14px; }
+}

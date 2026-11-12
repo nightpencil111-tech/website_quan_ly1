@@ -1,0 +1,30 @@
+<h1>Hồ sơ quân nhân</h1>
+<form method="get" action="/soldiers" class="inline-form filters">
+  <input type="search" name="q" placeholder="Tìm theo họ tên, chức vụ" value="<%= filters.q || '' %>">
+  <select name="unit_id"><option value="">Mọi đơn vị</option>
+    <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= Number(filters.unit_id) === u.id ? 'selected' : '' %>><%= u.name %></option><% }) %></select>
+  <select name="rank"><option value="">Mọi cấp bậc</option>
+    <% RANKS.forEach(function (k) { %><option value="<%= k %>" <%= filters.rank === k ? 'selected' : '' %>><%= k %></option><% }) %></select>
+  <select name="status"><option value="">Mọi trạng thái</option>
+    <% Object.keys(SL.status).forEach(function (k) { %><option value="<%= k %>" <%= filters.status === k ? 'selected' : '' %>><%= SL.status[k] %></option><% }) %></select>
+  <select name="party"><option value="">Đảng/Đoàn</option>
+    <% [['dang_vien','Đảng viên'],['du_bi','Đảng viên dự bị'],['doan_vien','Đoàn viên'],['khong','Chưa vào Đảng/Đoàn']].forEach(function (p) { %><option value="<%= p[0] %>" <%= filters.party === p[0] ? 'selected' : '' %>><%= p[1] %></option><% }) %></select>
+  <button type="submit" class="btn btn-primary">Lọc</button>
+  <a class="btn" href="/soldiers">Bỏ lọc</a>
+</form>
+<p><a class="btn btn-primary" href="/soldiers/new">Thêm hồ sơ</a></p>
+<div class="table-wrap">
+<table class="table">
+  <thead><tr><th>Họ và tên</th><th>Cấp bậc</th><th>Chức vụ</th><th>Đơn vị</th><th>Trạng thái</th><th>Tài khoản</th></tr></thead>
+  <tbody>
+  <% if (!soldiers.length) { %><tr><td colspan="6" class="muted">Không có hồ sơ nào phù hợp.</td></tr><% } %>
+  <% soldiers.forEach(function (s) { %>
+    <tr>
+      <td><a href="/soldiers/<%= s.id %>"><%= s.full_name %></a></td>
+      <td><%= s.rank || '–' %></td><td><%= s.position || '–' %></td><td><%= s.unit_name || '–' %></td>
+      <td><%= SL.status[s.status] %></td><td><%= s.username || '–' %></td>
+    </tr>
+  <% }) %>
+  </tbody>
+</table>
+</div>

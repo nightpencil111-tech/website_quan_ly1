@@ -1,0 +1,31 @@
+<%
+const f = form || {};
+const v = function (k) { return f[k] === null || f[k] === undefined ? '' : f[k]; };
+const text = [['position', 'Chức vụ'], ['hometown', 'Quê quán'], ['residence', 'Nơi cư trú'], ['ethnicity', 'Dân tộc'], ['religion', 'Tôn giáo'],
+  ['education', 'Trình độ học vấn'], ['specialty', 'Chuyên môn'], ['health_class', 'Loại sức khỏe'], ['blood_type', 'Nhóm máu'], ['phone', 'Điện thoại']];
+const dates = [['birth_date', 'Ngày sinh'], ['rank_date', 'Ngày nhận cấp bậc'], ['enlist_date', 'Ngày nhập ngũ'], ['discharge_date', 'Ngày xuất ngũ'],
+  ['youth_join_date', 'Ngày vào Đoàn'], ['party_join_date', 'Ngày vào Đảng'], ['party_official_date', 'Ngày chuyển Đảng chính thức']];
+%>
+<h1><%= target ? 'Sửa hồ sơ quân nhân' : 'Thêm hồ sơ quân nhân' %></h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<form method="post" action="<%= target ? '/soldiers/' + target.id : '/soldiers' %>" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Họ và tên <input type="text" name="full_name" value="<%= v('full_name') %>" required maxlength="100"></label>
+  <label>Giới tính
+    <select name="gender"><option value="">–</option>
+      <% Object.keys(SL.gender).forEach(function (k) { %><option value="<%= k %>" <%= v('gender') === k ? 'selected' : '' %>><%= SL.gender[k] %></option><% }) %></select></label>
+  <label>Cấp bậc
+    <select name="rank"><option value="">–</option>
+      <% RANKS.forEach(function (k) { %><option value="<%= k %>" <%= v('rank') === k ? 'selected' : '' %>><%= k %></option><% }) %></select></label>
+  <label>Đơn vị
+    <select name="unit_id"><option value="">–</option>
+      <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= Number(v('unit_id')) === u.id ? 'selected' : '' %>><%= u.name %></option><% }) %></select></label>
+  <label>Trạng thái
+    <select name="status">
+      <% Object.keys(SL.status).forEach(function (k) { %><option value="<%= k %>" <%= (v('status') || 'dang_cong_tac') === k ? 'selected' : '' %>><%= SL.status[k] %></option><% }) %></select></label>
+  <% text.forEach(function (t) { %><label><%= t[1] %> <input type="text" name="<%= t[0] %>" value="<%= v(t[0]) %>"></label><% }) %>
+  <% dates.forEach(function (t) { %><label><%= t[1] %> <input type="date" name="<%= t[0] %>" value="<%= v(t[0]) %>"></label><% }) %>
+  <label>Ghi chú <textarea name="notes" rows="3"><%= v('notes') %></textarea></label>
+  <button type="submit" class="btn btn-primary">Lưu</button>
+  <a class="btn" href="<%= target ? '/soldiers/' + target.id : '/soldiers' %>">Hủy</a>
+</form>

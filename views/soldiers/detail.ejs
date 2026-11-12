@@ -1,0 +1,3 @@
+<h1>Hồ sơ: <%= profile.soldier.full_name %></h1>
+<p><a href="/soldiers">&larr; Danh sách hồ sơ</a></p>
+<%- include('_profile', { profile: profile, TABS: TABS, tab: tab, base: base, SL: SL, manage: true, milestones: milestones, csrf: csrf, fmtDate: fmtDate }) %>

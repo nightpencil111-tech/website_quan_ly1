@@ -1,0 +1,6 @@
+<h1>Hồ sơ của tôi</h1>
+<% if (!profile) { %>
+<div class="alert alert-info">Tài khoản của đồng chí chưa được liên kết với hồ sơ. Đề nghị liên hệ chỉ huy.</div>
+<% } else { %>
+<%- include('_profile', { profile: profile, TABS: TABS, tab: tab, base: base, SL: SL, manage: false, milestones: milestones, csrf: csrf, fmtDate: fmtDate }) %>
+<% } %>

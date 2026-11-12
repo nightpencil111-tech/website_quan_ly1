@@ -1,0 +1,52 @@
+<%
+const s = profile.soldier;
+const PARTY = { dang_vien: 'Đảng viên', du_bi: 'Đảng viên dự bị', doan_vien: 'Đoàn viên', khong: 'Chưa vào Đảng/Đoàn' };
+const SOURCES = { 'gia-dinh': ['family', profile.family], 'cong-tac': ['career', profile.career], 'khen-thuong': ['award', profile.awards], 'phep': ['leave', profile.leaves], 'tu-tuong': ['thought', profile.thoughts] };
+const info = [
+  ['Giới tính', s.gender ? SL.gender[s.gender] : null], ['Ngày sinh', fmtDate(s.birth_date)], ['Quê quán', s.hometown], ['Nơi cư trú', s.residence],
+  ['Dân tộc', s.ethnicity], ['Tôn giáo', s.religion], ['Trình độ học vấn', s.education], ['Chuyên môn', s.specialty],
+  ['Ngày nhận cấp bậc', fmtDate(s.rank_date)], ['Ngày nhập ngũ', fmtDate(s.enlist_date)], ['Ngày xuất ngũ', fmtDate(s.discharge_date)],
+  ['Ngày vào Đoàn', fmtDate(s.youth_join_date)], ['Ngày vào Đảng', fmtDate(s.party_join_date)], ['Ngày chuyển Đảng chính thức', fmtDate(s.party_official_date)],
+  ['Loại sức khỏe', s.health_class], ['Nhóm máu', s.blood_type], ['Điện thoại', s.phone], ['Ghi chú', s.notes],
+];
+%>
+<section class="panel profile-summary">
+  <dl class="info">
+    <dt>Họ và tên</dt><dd><strong><%= s.full_name %></strong></dd>
+    <dt>Cấp bậc</dt><dd><%= s.rank || '–' %></dd>
+    <dt>Chức vụ</dt><dd><%= s.position || '–' %></dd>
+    <dt>Đơn vị</dt><dd><%= s.unit_name || '–' %></dd>
+    <dt>Trạng thái</dt><dd><span class="badge"><%= SL.status[s.status] %></span></dd>
+    <dt>Đảng/Đoàn</dt><dd><%= PARTY[s.party_state] %></dd>
+    <% if (manage) { %><dt>Tài khoản liên kết</dt><dd><%= s.username || 'Chưa liên kết' %></dd><% } %>
+    <dt>Ngày phép đã nghỉ năm nay</dt><dd><%= profile.leaveDaysThisYear %></dd>
+    <% if (manage) { %>
+    <dt>Mốc sắp đến</dt>
+    <dd><% if (!milestones.length) { %>Không có mốc sắp đến<% } else { %><ul class="plain">
+      <% milestones.forEach(function (m) { %><li><%= SL.milestoneKind[m.kind] %>: <%= fmtDate(m.due_date) %> (<%= m.days_left < 0 ? 'quá hạn ' + (-m.days_left) + ' ngày' : 'còn ' + m.days_left + ' ngày' %>)</li><% }) %>
+    </ul><% } %></dd>
+    <% } %>
+  </dl>
+  <% if (manage) { %>
+  <div class="actions-row">
+    <a class="btn" href="/soldiers/<%= s.id %>/edit">Sửa hồ sơ</a>
+    <form method="post" action="/soldiers/<%= s.id %>/delete" class="inline" onsubmit="return confirm('Xóa toàn bộ hồ sơ này? Thao tác không thể hoàn tác.');">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <button type="submit" class="btn btn-danger">Xóa hồ sơ</button>
+    </form>
+  </div>
+  <% } %>
+</section>
+
+<%- include('_tabs', { TABS: TABS, tab: tab, base: base }) %>
+<% if (tab === 'ly-lich') { %>
+<section class="panel">
+  <dl class="info">
+    <% info.forEach(function (i) { %><dt><%= i[0] %></dt><dd><%= i[1] || '–' %></dd><% }) %>
+  </dl>
+</section>
+<% } else { var src = SOURCES[tab]; %>
+<section class="panel">
+  <%- include('_item-tables', { type: src[0], rows: src[1], manage: manage, soldierId: s.id, SL: SL, csrf: csrf, fmtDate: fmtDate }) %>
+</section>
+<% } %>
