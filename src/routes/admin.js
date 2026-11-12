@@ -22,6 +22,8 @@ const AUDIT_ACTIONS = {
   rule_create: 'Tạo việc định kỳ', rule_update: 'Sửa việc định kỳ', rule_delete: 'Xóa việc định kỳ',
   event_create: 'Tạo sự kiện lịch', event_update: 'Sửa sự kiện lịch', event_delete: 'Xóa sự kiện lịch',
   settings_update: 'Đổi cài đặt', backup: 'Sao lưu dữ liệu',
+  doc_template_create: 'Tạo mẫu văn bản', doc_template_update: 'Sửa mẫu văn bản', doc_template_delete: 'Xóa mẫu văn bản',
+  doc_template_restore: 'Khôi phục mẫu văn bản dựng sẵn', doc_generate: 'Tạo văn bản', unit_info_settings: 'Đổi thông tin đơn vị',
   soldier_view: 'Xem hồ sơ quân nhân', soldier_create: 'Tạo hồ sơ quân nhân', soldier_update: 'Sửa hồ sơ quân nhân',
   soldier_delete: 'Xóa hồ sơ quân nhân', soldier_link: 'Liên kết tài khoản với hồ sơ',
   soldier_import: 'Nhập hồ sơ từ Excel', soldier_export: 'Xuất hồ sơ ra Excel', milestone_settings: 'Đổi cài đặt mốc nhắc',
