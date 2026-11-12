@@ -30,3 +30,11 @@ test('LABELS và PRIORITY_WEIGHT', () => {
   assert.equal(LABELS.role.admin, 'Chỉ huy (Admin)');
   assert.deepEqual(PRIORITY_WEIGHT, { thuong: 1, gap: 1.5, hoa_toc: 2 });
 });
+
+test('addMonths kẹp ngày cuối tháng', () => {
+  const { addMonths } = require('../src/util/date');
+  assert.equal(addMonths('2028-01-31', 1), '2028-02-29');
+  assert.equal(addMonths('2026-08-31', 6), '2027-02-28');
+  assert.equal(addMonths('2026-12-15', 1), '2027-01-15');
+  assert.equal(addMonths('2026-03-10', -4), '2025-11-10');
+});

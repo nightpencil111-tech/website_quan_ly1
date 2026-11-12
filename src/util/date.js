@@ -19,6 +19,17 @@ function daysBetween(a, b) {
   return Math.round((toUtcMs(b) - toUtcMs(a)) / DAY_MS);
 }
 
+// Cộng n tháng, kẹp về ngày cuối tháng nếu tháng đích ngắn hơn (31/01 + 1 → 28|29/02).
+function addMonths(d, n) {
+  const [y, m, day] = d.split('-').map(Number);
+  const total = y * 12 + (m - 1) + n;
+  const ny = Math.floor(total / 12);
+  const nm = total - ny * 12;
+  const last = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+  const pad = (x, w = 2) => String(x).padStart(w, '0');
+  return `${pad(ny, 4)}-${pad(nm + 1)}-${pad(Math.min(day, last))}`;
+}
+
 // 1 = Thứ Hai … 7 = Chủ nhật
 function weekday(d) {
   const w = new Date(toUtcMs(d)).getUTCDay();
@@ -40,4 +51,4 @@ function fmtDateTime(s) {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)} ${iso.slice(11, 16)}`;
 }
 
-module.exports = { today, addDays, daysBetween, weekday, fmtDate, fmtDateTime };
+module.exports = { today, addDays, addMonths, daysBetween, weekday, fmtDate, fmtDateTime };

@@ -114,6 +114,94 @@ const MIGRATIONS = [
     expires_at INTEGER NOT NULL
   );
   `,
+  `
+  CREATE TABLE soldiers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL,
+    full_name TEXT NOT NULL,
+    birth_date TEXT,
+    gender TEXT CHECK (gender IS NULL OR gender IN ('nam','nu')),
+    hometown TEXT,
+    residence TEXT,
+    ethnicity TEXT,
+    religion TEXT,
+    education TEXT,
+    specialty TEXT,
+    rank TEXT,
+    rank_date TEXT,
+    position TEXT,
+    unit_id INTEGER REFERENCES units(id),
+    enlist_date TEXT,
+    discharge_date TEXT,
+    youth_join_date TEXT,
+    party_join_date TEXT,
+    party_official_date TEXT,
+    health_class TEXT,
+    blood_type TEXT,
+    phone TEXT,
+    status TEXT NOT NULL DEFAULT 'dang_cong_tac' CHECK (status IN ('dang_cong_tac','da_ra_quan','chuyen_don_vi')),
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX idx_soldiers_unit ON soldiers(unit_id);
+  CREATE TABLE soldier_family (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    relation TEXT,
+    full_name TEXT,
+    birth_year TEXT,
+    job TEXT,
+    address TEXT,
+    hardship_note TEXT
+  );
+  CREATE INDEX idx_soldier_family_soldier ON soldier_family(soldier_id);
+  CREATE TABLE soldier_career (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    from_date TEXT,
+    to_date TEXT,
+    position TEXT,
+    unit_text TEXT
+  );
+  CREATE INDEX idx_soldier_career_soldier ON soldier_career(soldier_id);
+  CREATE TABLE soldier_awards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('khen_thuong','ky_luat')),
+    date TEXT,
+    form TEXT,
+    reason TEXT,
+    decision_no TEXT
+  );
+  CREATE INDEX idx_soldier_awards_soldier ON soldier_awards(soldier_id);
+  CREATE TABLE soldier_leaves (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('phep','tranh_thu')),
+    from_date TEXT,
+    to_date TEXT,
+    destination TEXT,
+    note TEXT
+  );
+  CREATE INDEX idx_soldier_leaves_soldier ON soldier_leaves(soldier_id, from_date);
+  CREATE TABLE soldier_thoughts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    soldier_id INTEGER NOT NULL REFERENCES soldiers(id) ON DELETE CASCADE,
+    date TEXT,
+    content TEXT,
+    level TEXT NOT NULL DEFAULT 'binh_thuong' CHECK (level IN ('binh_thuong','can_quan_tam','dac_biet')),
+    measures TEXT,
+    recorded_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  );
+  CREATE INDEX idx_soldier_thoughts_soldier ON soldier_thoughts(soldier_id, date);
+  CREATE TABLE import_drafts (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER,
+    payload TEXT,
+    expires_at INTEGER
+  );
+  `,
 ];
 
 // Migration đánh số phiên bản; schema_version giữ một dòng cho mỗi phiên bản đã áp dụng.
