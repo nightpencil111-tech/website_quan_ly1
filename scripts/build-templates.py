@@ -239,8 +239,11 @@ def body(doc):
 def signature(doc, left_cm, party=False):
     """Cuối văn bản: Nơi nhận | chức vụ (T/M CHI BỘ – BÍ THƯ), 3 dòng trống ký, họ tên."""
     right_cm = content_width(doc) - left_cm
-    add_para(doc, '', after=6)
+    spacer = add_para(doc, '', after=6)
+    spacer.paragraph_format.keep_with_next = True
     t = make_table(doc, [left_cm, right_cm])
+    # Khối chữ ký không bị tách đôi giữa hai trang.
+    t.rows[0]._tr.get_or_add_trPr().append(OxmlElement('w:cantSplit'))
     left, right = t.cell(0, 0), t.cell(0, 1)
     add_para(left, 'Nơi nhận:', LEFT, bold=True, italic=True, size=12, first=True)
     add_para(left, '{noi_nhan}', LEFT, size=11)
@@ -322,12 +325,14 @@ QUAN_NHAN = [
 ]
 DANG_VIEN = [
     ('TT', 1.2, '{stt}', CENTER),
-    ('Họ và tên', 5.0, '{ho_ten}', LEFT),
-    ('Ngày sinh', 2.8, '{ngay_sinh}', CENTER),
-    ('Dân tộc / Tôn giáo', 3.8, '{dan_toc} / {ton_giao}', CENTER),
-    ('Quê quán', 5.0, '{que_quan}', LEFT),
-    ('Ngày vào Đảng / Chính thức', 6.0, '{ngay_vao_dang} / {ngay_chinh_thuc}', CENTER),
-    ('Ghi chú', 2.4, '', CENTER),
+    ('Họ và tên', 4.6, '{ho_ten}', LEFT),
+    ('Ngày sinh', 2.6, '{ngay_sinh}', CENTER),
+    ('Dân tộc', 2.0, '{dan_toc}', CENTER),
+    ('Tôn giáo', 2.4, '{ton_giao}', CENTER),
+    ('Quê quán', 4.6, '{que_quan}', LEFT),
+    ('Ngày vào Đảng', 3.0, '{ngay_vao_dang}', CENTER),
+    ('Chính thức', 3.0, '{ngay_chinh_thuc}', CENTER),
+    ('Ghi chú', 2.8, '', CENTER),
 ]
 
 FIXED_DATE = (1980, 1, 1, 0, 0, 0)

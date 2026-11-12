@@ -102,7 +102,7 @@ test('generate từng mẫu dựng sẵn: không sót ngoặc, có dữ liệu �
     if (key === 'danh_sach_dang_vien') {
       assert.ok(text.includes('Đỗ Văn Đảng') && text.includes('Bùi Văn Bị'));
       assert.ok(!text.includes('Cao Văn Chúng'));
-      assert.ok(text.includes('03/02/2024 / 03/02/2025'));
+      assert.ok(text.includes('03/02/2024') && text.includes('03/02/2025'));
       assert.ok(text.includes('1\nBùi Văn Bị') && text.includes('2\nĐỗ Văn Đảng'));
     }
   }
