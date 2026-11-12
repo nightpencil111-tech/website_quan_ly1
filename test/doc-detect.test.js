@@ -129,7 +129,7 @@ test('detect: nhãn sau số thứ tự, khớp nhãn dài nhất, nhãn tối �
 });
 
 test('detect: newCode tránh mã danh mục, ds, mã đã dùng; hợp lệ với quy tắc trường nhập tay', () => {
-  const buf = makeDocx(['Ngày ...... tháng ...... năm ......', 'Ds: ......', 'Lý do: ....', 'Lý do: ....', '...........', '1234: ....',
+  const buf = makeDocx(['Ngày: ...... Tháng: ...... Năm: ......', 'Ds: ......', 'Lý do: ....', 'Lý do: ....', '...........', '1234: ....',
     'Nội dung rất rất rất dài dòng quá mức: ......']);
   const s = D.detect(buf).suggestions;
   const codes = s.map((x) => x.newCode);
@@ -193,3 +193,86 @@ test('detect: chỗ trống ngày "..../..../...." là một; nhãn bỏ phần 
   const out = D.applySuggestions(buf, useAll(s));
   assert.equal(docxText(out.buffer), 'Ngày sinh: {ngay_sinh}\nHọ và tên (chữ in hoa): {ho_ten}\nGhi chú ｛nếu có｝: {ghi_chu}');
 });
+
+// Hộp văn bản Word: cùng nội dung lưu hai lần (mc:Choice cho Word mới, mc:Fallback cho Word cũ).
+function textBox(inner) {
+  return '<w:p><w:r><mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">' +
+    `<mc:Choice Requires="wps"><w:drawing><wps:txbx><w:txbxContent>${inner}</w:txbxContent></wps:txbx></w:drawing></mc:Choice>` +
+    `<mc:Fallback><w:pict><v:textbox><w:txbxContent>${inner}</w:txbxContent></v:textbox></w:pict></mc:Fallback>` +
+    '</mc:AlternateContent></w:r></w:p>';
+}
+
+test('hộp văn bản: chỗ trống trong mc:Choice/mc:Fallback chỉ hiện một lần, áp dụng cho cả hai', () => {
+  const inner = para([{ t: 'Lý do: ........' }]) + para([{ t: 'Họ và tên: ........' }]);
+  const buf = makeDocx({ xmlBody: textBox(inner) + para([{ t: 'Lý do: ......' }]) });
+  const s = D.detect(buf).suggestions;
+  assert.deepEqual(s.map((x) => x.code || x.newCode), ['ly_do', 'ho_ten', 'ly_do_2']);
+  const out = D.applySuggestions(buf, useAll(s).slice(0, 2));
+  const xml = docXml(out.buffer);
+  assert.equal((xml.match(/Lý do: \{ly_do\}/g) || []).length, 2);
+  assert.equal((xml.match(/Họ và tên: \{ho_ten\}/g) || []).length, 2);
+  assert.deepEqual(out.manualFields.map((f) => f.code), ['ly_do']);
+  assert.ok(docxText(out.buffer).includes('Lý do: ......'));
+  // bỏ qua → cả hai giữ nguyên
+  const skip = D.applySuggestions(buf, [{ id: s[0].id, action: 'skip' }]);
+  assert.equal((docXml(skip.buffer).match(/Lý do: \.{8}/g) || []).length, 2);
+});
+
+test('dòng ngày tháng: "……, ngày …… tháng …… năm 20……" là một chỗ → {ngay_thang}', () => {
+  const buf = makeDocx(['………………, ngày …… tháng …… năm 20……', 'Đồng Nai, ngày ..... tháng ..... năm .......',
+    'Hôm nay, ngày ...... tháng ...... năm 20......, tại hội trường']);
+  const s = D.detect(buf).suggestions;
+  assert.equal(s.length, 3, JSON.stringify(s));
+  assert.equal(s[0].code, 'ngay_thang');
+  assert.equal(s[0].kind, 'date_place');
+  assert.equal(s[1].kind, 'date');
+  assert.equal(s[2].kind, 'date');
+  const out = D.applySuggestions(buf, [
+    { id: s[0].id, action: 'use', code: 'ngay_thang' }, { id: s[1].id, action: 'date' }, { id: s[2].id, action: 'date' },
+  ]);
+  assert.equal(docxText(out.buffer), '{ngay_thang}\nĐồng Nai, ngày {ngay} tháng {thang} năm {nam}\n' +
+    'Hôm nay, ngày {ngay} tháng {thang} năm {nam}, tại hội trường');
+  assert.deepEqual(out.manualFields, []);
+  const r = renderDocx(out.buffer, { ngay_thang: 'Xã A, ngày 2 tháng 3 năm 2026', ngay: '2', thang: '3', nam: '2026' });
+  assert.ok(docxText(r).includes('Đồng Nai, ngày 2 tháng 3 năm 2026'));
+  assert.ok(!docxText(r).includes('202026'));
+  // chọn mã khác cho dòng ngày → thay cả cụm
+  const other = D.applySuggestions(buf, [{ id: s[1].id, action: 'use', code: 'ngay_thang' }]);
+  assert.ok(docxText(other.buffer).includes('Đồng Nai, ngày {ngay_thang}\n'), docxText(other.buffer));
+});
+
+test('mặc định: dấu … trong câu văn → prose (Bỏ qua); "Nhãn: ……" thì không', () => {
+  const buf = makeDocx(['Các đơn vị TP. Hồ Chí Minh...', 'Tổ chức học tập, sinh hoạt …', 'Ghi chú: ...', 'Lý do ........ đã nêu']);
+  const s = D.detect(buf).suggestions;
+  assert.deepEqual(s.map((x) => !!x.prose), [true, true, false, false]);
+  assert.deepEqual(s.slice(2).map((x) => [x.label, x.newCode]), [['Ghi chú', 'ghi_chu'], ['Lý do', 'ly_do']]);
+});
+
+test('ngoặc nhọn lẻ trong chú thích, nhận xét, thuộc tính tài liệu → đổi sang toàn khổ, mẫu lưu được', () => {
+  const zip = new PizZip(makeDocx(['Họ và tên: ......']));
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  zip.file('word/footnotes.xml', `<?xml version="1.0"?><w:footnotes ${W}><w:footnote w:id="1"><w:p><w:r><w:t>Xem {phụ lục</w:t></w:r></w:p></w:footnote></w:footnotes>`);
+  zip.file('word/comments.xml', `<?xml version="1.0"?><w:comments ${W}><w:comment w:id="0"><w:p><w:r><w:t>sửa } sau</w:t></w:r></w:p></w:comment></w:comments>`);
+  zip.file('docProps/core.xml', '<?xml version="1.0"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Mẫu {cũ</dc:title></cp:coreProperties>');
+  const ct = zip.file('[Content_Types].xml').asText().replace('</Types>',
+    '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' +
+    '<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>' +
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>');
+  zip.file('[Content_Types].xml', ct);
+  const buf = zip.generate({ type: 'nodebuffer' });
+  assert.ok(renderDocxFails(buf), 'mẫu gốc phải lỗi cú pháp');
+  const d = D.detect(buf);
+  assert.ok(d.braces.some((b) => b.includes('Xem {phụ lục')), d.braces.join('|'));
+  assert.ok(d.braces.some((b) => b.includes('Mẫu {cũ')), d.braces.join('|'));
+  const out = D.applySuggestions(buf, useAll(d.suggestions));
+  const z = new PizZip(out.buffer);
+  assert.ok(z.file('word/footnotes.xml').asText().includes('Xem ｛phụ lục'));
+  assert.ok(z.file('word/comments.xml').asText().includes('sửa ｝ sau'));
+  assert.ok(z.file('docProps/core.xml').asText().includes('Mẫu ｛cũ'));
+  assert.deepEqual(inspectTemplate(out.buffer).errors, []);
+  assert.ok(docxText(renderDocx(out.buffer, { ho_ten: 'An' })).includes('Họ và tên: An'));
+});
+
+function renderDocxFails(buf) {
+  try { renderDocx(buf, {}); return false; } catch (e) { return e instanceof AppError; }
+}

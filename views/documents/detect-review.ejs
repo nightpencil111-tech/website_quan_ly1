@@ -3,7 +3,10 @@ const soldierCodes = new Set(catalog.filter(function (f) { return f.group !== 'c
 function defOf(s) {
   const given = form.decisions[s.id];
   if (given !== undefined) return given;
+  if (s.kind === 'date') return 'date';
   if (s.code) return 'use:' + s.code;
+  // Dấu lửng trong câu văn ("TP. Hồ Chí Minh...") mặc định bỏ qua; "Nhãn: ……" mặc định thành ô nhập tay.
+  if (s.prose) return 'skip';
   return s.newCode ? 'manual' : 'skip';
 }
 const anySoldier = d.suggestions.some(function (s) { const v = defOf(s); return v.indexOf('use:') === 0 && soldierCodes.has(v.slice(4)); });
@@ -27,6 +30,7 @@ const mode = form.mode || (anySoldier ? 'tung_nguoi' : 'chung');
         <td><%= s.label %></td>
         <td><%= s.context %></td>
         <td><select name="decision_<%= s.id %>">
+          <% if (s.kind === 'date') { %><option value="date" <%= cur === 'date' ? 'selected' : '' %>>Ngày, tháng, năm tạo văn bản ({ngay} tháng {thang} năm {nam})</option><% } %>
           <% catalog.forEach(function (f) { %><option value="use:<%= f.code %>" <%= cur === 'use:' + f.code ? 'selected' : '' %>><%= f.label %> (<%= f.code %>)</option><% }) %>
           <% if (s.newCode) { %><option value="manual" <%= cur === 'manual' ? 'selected' : '' %>>Trường nhập tay mới (<%= s.newCode %>)</option><% } %>
           <option value="skip" <%= cur === 'skip' ? 'selected' : '' %>>Bỏ qua</option>

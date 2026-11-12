@@ -51,20 +51,34 @@ const encode = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/
 
 // Đoạn: w:p tự đóng | mở | đóng; chữ: w:t (không khớp w:tab/w:tbl/w:tc/w:tr, w:instrText, w:delText);
 // w:tab / w:br / w:cr trong run → ký tự ảo '\t' / '\n' (chỉ để tách nhãn, không bao giờ bị sửa).
-const TOKEN = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>|<\/w:p>|<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>|<w:t(?:\s[^>]*)?\/>|<w:tab\s*\/>|<w:(?:br|cr)(?:\s[^>]*)?\/>/g;
+// Hộp văn bản: Word lưu hai bản (mc:Choice cho Word mới, mc:Fallback cho Word cũ) → theo dõi để ghép đôi.
+const TOKEN = /<w:p(?:\s[^>]*)?\/>|<w:p(?:\s[^>]*)?>|<\/w:p>|<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>|<w:t(?:\s[^>]*)?\/>|<w:tab\s*\/>|<w:(?:br|cr)(?:\s[^>]*)?\/>|<\/?mc:(?:AlternateContent|Choice|Fallback)\b[^>]*>/g;
 
-// → [{index, text, segs: [{ts, te, text, at, len, open}]}] theo thứ tự mở đoạn.
+// → [{index, text, segs: [{ts, te, text, at, len, open}], twin}] theo thứ tự mở đoạn.
+// twin: đoạn tương ứng (cùng vị trí) trong mc:Choice của đoạn nằm trong mc:Fallback.
 function parseParagraphs(xml) {
   const paras = [];
   const stack = [];
+  const alt = [];
   TOKEN.lastIndex = 0;
   let m;
   while ((m = TOKEN.exec(xml))) {
     const tok = m[0];
+    if (/^<\/?mc:/.test(tok)) {
+      if (tok.endsWith('/>')) continue;
+      const ac = alt[alt.length - 1];
+      if (tok.startsWith('<mc:AlternateContent')) alt.push({ where: null, choice: [], fallback: 0 });
+      else if (tok.startsWith('</mc:AlternateContent')) alt.pop();
+      else if (ac) ac.where = tok.startsWith('<mc:Choice') ? 'choice' : tok.startsWith('<mc:Fallback') ? 'fallback' : null;
+      continue;
+    }
     if (tok.startsWith('</w:p')) { stack.pop(); continue; }
     if (/^<w:p[\s>/]/.test(tok)) {
-      const p = { index: paras.length, text: '', segs: [] };
+      const p = { index: paras.length, text: '', segs: [], twin: null };
       paras.push(p);
+      const ac = alt[alt.length - 1];
+      if (ac && ac.where === 'choice') ac.choice.push(p);
+      else if (ac && ac.where === 'fallback') p.twin = ac.choice[ac.fallback++] || null;
       if (!tok.endsWith('/>')) stack.push(p);
       continue;
     }
@@ -187,48 +201,128 @@ function strayBraces(text) {
   return out;
 }
 
+// Dòng ngày tháng: "<chỗ trống>, ngày … tháng … năm 20…" → một chỗ ({ngay_thang});
+// "ngày … tháng … năm …" (đã có địa danh hoặc không) → một chỗ, điền {ngay}, {thang}, {nam}.
+const between = (text, a, b) => text.slice(a, b).normalize('NFC');
+function blankItems(text, blanks) {
+  const items = [];
+  for (let i = 0; i < blanks.length; i++) {
+    const [d, mo, y] = [blanks[i], blanks[i + 1], blanks[i + 2]];
+    const before = between(text, i ? blanks[i - 1].end : 0, d.start);
+    const yearGap = y ? between(text, mo.end, y.start) : '';
+    if (y && /ngày[ \u00a0]*$/iu.test(before) && /^[ \u00a0]*tháng[ \u00a0]*$/iu.test(between(text, d.end, mo.start))
+        && /^[ \u00a0]*năm[ \u00a0]*(20)?$/iu.test(yearGap)) {
+      const yearStart = y.start - (/20$/.test(yearGap) ? 2 : 0);
+      const last = items[items.length - 1];
+      if (last && last.kind === 'blank' && last.end === blanks[i - 1].end && /^[ \u00a0]*,[ \u00a0]*ngày[ \u00a0]*$/iu.test(before)) {
+        items.pop();
+        items.push({ kind: 'date_place', start: last.start, end: y.end, label: 'Địa danh, ngày tháng năm' });
+      } else {
+        items.push({
+          kind: 'date', start: d.start, end: y.end, label: 'Ngày tháng năm',
+          parts: [[d.start, d.end, 'ngay'], [mo.start, mo.end, 'thang'], [yearStart, y.end, 'nam']],
+        });
+      }
+      i += 2;
+    } else {
+      items.push({ kind: 'blank', start: d.start, end: d.end });
+    }
+  }
+  return items;
+}
+
+// Dấu lửng trong câu văn ("TP. Hồ Chí Minh...", "… sinh hoạt …" cuối câu), không phải chỗ cần điền.
+function isProse(text, b) {
+  if (weight(text.slice(b.start, b.end)) > 3) return false;
+  const before = text.slice(0, b.start);
+  if (before.trimEnd().endsWith(':')) return false;
+  return /[\p{L}\p{N}]$/u.test(before) || !text.slice(b.end).trim();
+}
+
 function analyze(xml) {
   const paras = parseParagraphs(xml);
   const suggestions = [];
   const braces = [];
   const used = new Set();
+  const byPara = new Map();
   for (const p of paras) {
     if (strayBraces(p.text).length) braces.push(context(p.text));
+    const items = blankItems(p.text, findBlanks(p.text));
+    // Bản sao trong mc:Fallback của hộp văn bản: không hiện lại, áp cùng lựa chọn với bản trong mc:Choice.
+    const twin = p.twin && byPara.get(p.twin);
+    if (twin && twin.text === p.text && twin.list.length === items.length) {
+      for (const s of twin.list) s._twinParas.push(p);
+      continue;
+    }
+    const list = [];
     let prevEnd = 0;
-    findBlanks(p.text).forEach((b, k) => {
-      const label = extractLabel(p.text.slice(prevEnd, b.start));
-      prevEnd = b.end;
-      const code = matchCode(label);
+    items.forEach((b, k) => {
       const n = suggestions.length + 1;
-      const newCode = code ? null : uniqueCode(slug(label) || `truong_${n}`, used);
-      suggestions.push({
-        id: `p${p.index}-${k}`, paragraphIndex: p.index, context: context(p.text), label, code, newCode,
-        _para: p, _start: b.start, _end: b.end, _fieldLabel: (label || `Trường ${n}`).slice(0, 120),
-      });
+      const id = `p${p.index}-${k}`;
+      const base = { id, paragraphIndex: p.index, context: context(p.text), _para: p, _twinParas: [], _start: b.start, _end: b.end };
+      let s;
+      if (b.kind === 'blank') {
+        const label = extractLabel(p.text.slice(prevEnd, b.start));
+        const code = matchCode(label);
+        const newCode = code ? null : uniqueCode(slug(label) || `truong_${n}`, used);
+        s = { ...base, label, code, newCode, kind: 'blank', prose: isProse(p.text, b), _fieldLabel: (label || `Trường ${n}`).slice(0, 120) };
+      } else {
+        s = { ...base, label: b.label, code: b.kind === 'date_place' ? 'ngay_thang' : null, newCode: null, kind: b.kind, prose: false,
+          _parts: b.parts || null, _fieldLabel: b.label };
+      }
+      prevEnd = b.end;
+      list.push(s);
+      suggestions.push(s);
     });
+    byPara.set(p, { text: p.text, list });
   }
   return { paras, suggestions, braces };
 }
 
-const publicView = ({ id, paragraphIndex, context: ctx, label, code, newCode }) => ({ id, paragraphIndex, context: ctx, label, code, newCode });
+const publicView = ({ id, paragraphIndex, context: ctx, label, code, newCode, kind, prose }) => ({
+  id, paragraphIndex, context: ctx, label, code, newCode, kind, prose,
+});
 
 function openDocument(buffer) {
   const zip = openZip(buffer); // kiểm tra định dạng và kích thước giải nén
   return { zip, xml: zip.file('word/document.xml').asText() };
 }
 
-const otherParts = (zip) => Object.keys(zip.files).filter((n) => /^word\/(header|footer)\d*\.xml$/.test(n));
+// Các phần XML khác docxtemplater cũng xử lý như mẫu (đầu/chân trang, chú thích, nhận xét, cài đặt,
+// thuộc tính tài liệu): ngoặc nhọn lẻ ở đó cũng làm hỏng mẫu.
+const otherParts = (zip) => Object.keys(zip.files)
+  .filter((n) => !zip.files[n].dir && n !== 'word/document.xml' && /^(word|docProps)\/[^/]+\.xml$/.test(n));
+const isProps = (name) => name.startsWith('docProps/');
+
+const braceEdits = (p) => strayBraces(p.text).map((i) => ({ start: i, end: i + 1, text: p.text[i] === '{' ? '｛' : '｝' }));
+const fullwidth = (text) => {
+  let out = text;
+  for (const i of strayBraces(text)) out = out.slice(0, i) + (text[i] === '{' ? '｛' : '｝') + out.slice(i + 1);
+  return out;
+};
+
+// Thuộc tính tài liệu (docProps): chữ nằm thẳng giữa các thẻ, không có w:p/w:t.
+function propTexts(xml) {
+  return (xml.match(/>[^<]+</g) || []).map((m) => m.slice(1, -1)).filter((t) => strayBraces(t).length);
+}
+
+function partBraces(name, xml) {
+  if (isProps(name)) return propTexts(xml).map((t) => context(decode(t)));
+  return parseParagraphs(xml).filter((p) => strayBraces(p.text).length).map((p) => context(p.text));
+}
+
+function fixPartBraces(name, xml) {
+  if (isProps(name)) return xml.replace(/>([^<]+)</g, (m, t) => `>${fullwidth(t)}<`);
+  const pl = parseParagraphs(xml).map((p) => ({ para: p, edits: braceEdits(p) })).filter((x) => x.edits.length);
+  return pl.length ? applyEdits(xml, pl) : xml;
+}
 
 function detect(buffer) {
   const { zip, xml } = openDocument(buffer);
   const { suggestions, braces } = analyze(xml);
-  for (const name of otherParts(zip)) {
-    for (const p of parseParagraphs(zip.file(name).asText())) if (strayBraces(p.text).length) braces.push(context(p.text));
-  }
+  for (const name of otherParts(zip)) braces.push(...partBraces(name, zip.file(name).asText()));
   return { suggestions: suggestions.map(publicView), braces };
 }
-
-const braceEdits = (p) => strayBraces(p.text).map((i) => ({ start: i, end: i + 1, text: p.text[i] === '{' ? '｛' : '｝' }));
 
 function applySuggestions(buffer, decisions) {
   const { zip, xml } = openDocument(buffer);
@@ -236,9 +330,18 @@ function applySuggestions(buffer, decisions) {
   const byId = new Map(suggestions.map((s) => [s.id, s]));
   const edits = new Map(paras.map((p) => [p, braceEdits(p)]));
   const manualFields = [];
+  const put = (s, start, end, text) => {
+    for (const p of [s._para, ...s._twinParas]) edits.get(p).push({ start, end, text });
+  };
   for (const d of Array.isArray(decisions) ? decisions : []) {
     const s = d && byId.get(String(d.id));
     if (!s || d.action === 'skip') continue;
+    if (d.action === 'date') {
+      if (s.kind !== 'date') throw new AppError('Lựa chọn cho chỗ cần điền không hợp lệ');
+      byId.delete(s.id);
+      for (const [start, end, code] of s._parts) put(s, start, end, `{${code}}`);
+      continue;
+    }
     if (d.action !== 'use' && d.action !== 'manual') throw new AppError('Lựa chọn cho chỗ cần điền không hợp lệ');
     const code = String(d.code ?? '').trim();
     if (!CODE_RE.test(code) || code === LIST_LOOP) {
@@ -249,14 +352,14 @@ function applySuggestions(buffer, decisions) {
       if (!manualFields.some((f) => f.code === code)) manualFields.push({ code, label: s._fieldLabel, type: 'text', required: false });
     }
     byId.delete(s.id); // mỗi chỗ trống chỉ thay một lần
-    edits.get(s._para).push({ start: s._start, end: s._end, text: `{${code}}` });
+    put(s, s._start, s._end, `{${code}}`);
   }
   const list = [...edits].filter(([, e]) => e.length).map(([para, e]) => ({ para, edits: e }));
   zip.file('word/document.xml', applyEdits(xml, list));
   for (const name of otherParts(zip)) {
     const part = zip.file(name).asText();
-    const pl = parseParagraphs(part).map((p) => ({ para: p, edits: braceEdits(p) })).filter((x) => x.edits.length);
-    if (pl.length) zip.file(name, applyEdits(part, pl));
+    const fixed = fixPartBraces(name, part);
+    if (fixed !== part) zip.file(name, fixed);
   }
   return { buffer: zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }), manualFields };
 }

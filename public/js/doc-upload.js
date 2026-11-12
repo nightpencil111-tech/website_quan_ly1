@@ -9,6 +9,7 @@
   btn.addEventListener('click', function () {
     var f = input.files && input.files[0];
     if (!f) return show('Đồng chí chưa chọn tệp.', true);
+    if (/\.doc$/i.test(f.name)) return show('Tệp .doc (Word cũ) chưa hỗ trợ: đồng chí mở bằng Word → File → Save As → chọn Word Document (.docx) rồi tải lại.', true);
     if (!/\.docx$/i.test(f.name)) return show('Chỉ nhận tệp Word .docx.', true);
     if (f.size > MAX) return show('Tệp quá lớn, dung lượng tối đa 5MB.', true);
     btn.disabled = true;
@@ -23,7 +24,9 @@
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': meta ? meta.content : '' },
         body: JSON.stringify({ fileName: f.name, data: data }),
       }).then(function (res) {
-        return res.json().catch(function () { return { ok: false, error: 'Phản hồi không hợp lệ' }; });
+        var expired = { ok: false, error: 'Phiên làm việc đã hết hạn hoặc không hợp lệ, đồng chí tải lại trang và thử lại.' };
+        if (res.status === 403) return expired;
+        return res.json().catch(function () { return expired; });
       }).then(function (j) {
         if (j.ok && j.redirect) { window.location.href = j.redirect; return; }
         btn.disabled = false;

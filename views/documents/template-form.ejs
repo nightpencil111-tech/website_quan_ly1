@@ -37,7 +37,7 @@
 <div class="card">
   <p><a class="btn" href="/documents/templates/<%= t.id %>/file">Tải tệp mẫu về</a></p>
   <label for="doc-file">Thay bằng tệp Word khác (.docx, tối đa 5MB)</label>
-  <input type="file" id="doc-file" accept=".docx">
+  <input type="file" id="doc-file" accept=".docx,.doc">
   <p id="doc-msg" class="muted" role="status"></p>
   <button type="button" id="doc-btn" class="btn" data-url="/documents/templates/<%= t.id %>/file">Thay tệp mẫu</button>
 </div>

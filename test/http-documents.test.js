@@ -234,3 +234,50 @@ test('member bị chặn upload JSON, tải mẫu, sửa mẫu; khôi phục m�
     assert.equal((await post(s, m, `/documents/templates/${c.id}/restore`)).status, 400);
   } finally { await s.close(); }
 });
+
+const selectedOf = (html) => Object.fromEntries([...html.matchAll(/<select name="decision_([\w-]+)">([\s\S]*?)<\/select>/g)]
+  .map((m) => [m[1], (/<option value="([^"]*)" selected>/.exec(m[2]) || [])[1]]));
+
+test('review: dòng ngày tháng một chỗ, dấu lửng trong câu mặc định Bỏ qua, "Nhãn: ……" mặc định nhập tay', async () => {
+  const { s } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const buf = makeDocx(['Đồng Nai, ngày …… tháng …… năm 20……', '……………, ngày …… tháng …… năm ……',
+      'Các đơn vị TP. Hồ Chí Minh...', 'Lý do: ........']);
+    const j = await (await postJson(s, m, '/documents/templates/upload', { fileName: 'Mau.docx', data: buf.toString('base64') })).json();
+    const html = await (await get(s, m, j.redirect)).text();
+    const sel = selectedOf(html);
+    assert.deepEqual(Object.values(sel), ['date', 'use:ngay_thang', 'skip', 'manual'], html);
+    const body = { name: 'Mẫu ngày', category: 'khac', mode: 'chung' };
+    for (const [id, v] of Object.entries(sel)) body[`decision_${id}`] = v;
+    const conf = await post(s, m, j.redirect, body);
+    assert.equal(conf.status, 302);
+    const id = tplId(s, 'Mẫu ngày');
+    assert.equal(docxText(docTemplates.getTemplateFile(s.db, id)),
+      'Đồng Nai, ngày {ngay} tháng {thang} năm {nam}\n{ngay_thang}\nCác đơn vị TP. Hồ Chí Minh...\nLý do: {ly_do}');
+  } finally { await s.close(); }
+});
+
+test('tạo văn bản: mặc định chỉ hiện quân nhân đang công tác; vẫn chọn được "Mọi trạng thái"', async () => {
+  const { s, ids } = await boot();
+  try {
+    soldiers.updateSoldier(s.db, ids.sb, { ...soldiers.getSoldier(s.db, ids.sb), status: 'da_ra_quan' }, ids.mgr);
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const id = s.db.prepare("SELECT id FROM doc_templates WHERE builtin_key = 'danh_sach_quan_nhan'").get().id;
+    const def = await (await get(s, m, `/documents/${id}/generate`)).text();
+    assert.ok(def.includes('Nguyễn Văn An') && !def.includes('Trần Văn Bình'));
+    assert.match(def, /<option value="dang_cong_tac" selected>/);
+    const all = await (await get(s, m, `/documents/${id}/generate?status=`)).text();
+    assert.ok(all.includes('Nguyễn Văn An') && all.includes('Trần Văn Bình'));
+  } finally { await s.close(); }
+});
+
+test('tải lên tệp .doc → hướng dẫn lưu thành .docx', async () => {
+  const { s } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const r = await postJson(s, m, '/documents/templates/upload', { fileName: 'cu.doc', data: Buffer.from('x').toString('base64') });
+    assert.equal(r.status, 400);
+    assert.match((await r.json()).error, /Tệp \.doc \(Word cũ\) chưa hỗ trợ: đồng chí mở bằng Word → File → Save As → chọn Word Document \(\.docx\) rồi tải lại\./);
+  } finally { await s.close(); }
+});

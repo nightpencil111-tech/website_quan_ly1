@@ -25,6 +25,7 @@ const MODE_LABELS = {
 const TYPE_LABELS = { text: 'Một dòng', textarea: 'Nhiều dòng', date: 'Ngày' };
 const PARTY_FILTERS = [['dang_vien', 'Đảng viên'], ['du_bi', 'Đảng viên dự bị'], ['doan_vien', 'Đoàn viên'], ['khong', 'Chưa vào Đảng/Đoàn']];
 const MAX_FILE = 5 * 1024 * 1024;
+const OLD_DOC_MSG = 'Tệp .doc (Word cũ) chưa hỗ trợ: đồng chí mở bằng Word → File → Save As → chọn Word Document (.docx) rồi tải lại.';
 const CATALOG_CODES = new Set(FIELD_CATALOG.map((f) => f.code));
 const DONE_MSGS = {
   created: 'Đã tạo mẫu mới. Đồng chí kiểm tra lại các trường nhập tay bên dưới.',
@@ -77,6 +78,7 @@ module.exports = (db) => {
   const readUpload = (body) => {
     const { fileName, data } = body || {};
     if (typeof data !== 'string' || !data) throw new AppError('Đồng chí chưa chọn tệp Word');
+    if (/\.doc$/i.test(String(fileName || ''))) throw new AppError(OLD_DOC_MSG);
     if (!/\.docx$/i.test(String(fileName || ''))) throw new AppError('Chỉ nhận tệp Word .docx');
     const buf = Buffer.from(data, 'base64');
     if (!buf.length) throw new AppError('Tệp rỗng');
@@ -147,6 +149,7 @@ module.exports = (db) => {
       decisions[s.id] = v;
       if (v === 'skip') list.push({ id: s.id, action: 'skip' });
       else if (v === 'manual') list.push({ id: s.id, action: 'manual', code: s.newCode });
+      else if (v === 'date' && s.kind === 'date') list.push({ id: s.id, action: 'date' });
       else if (v.startsWith('use:')) list.push({ id: s.id, action: 'use', code: v.slice(4) });
       else list.push({ id: s.id, action: 'skip' });
     }
@@ -271,7 +274,9 @@ module.exports = (db) => {
 
   r.get('/documents/:id(\\d+)/generate', (req, res) => {
     const t = tplOr404(req, res);
-    if (t) renderGenerate(res, t, { filters: clean(req.query) });
+    // Mặc định chỉ quân nhân đang công tác; "Mọi trạng thái" gửi status= rỗng.
+    const query = Object.hasOwn(req.query, 'status') ? req.query : { ...req.query, status: 'dang_cong_tac' };
+    if (t) renderGenerate(res, t, { filters: clean(query) });
   });
 
   r.post('/documents/:id(\\d+)/generate', (req, res, next) => {
