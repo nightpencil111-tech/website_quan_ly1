@@ -21,7 +21,7 @@
   <button type="submit" class="btn btn-primary">Hỏi</button>
 </form>
 <p class="muted">Gợi ý:
-  <% suggestions.forEach(function (s) { %><a class="chip" href="/assistant?tab=hoi-dap&amp;q=<%= encodeURIComponent(s) %>"><%= s %></a> <% }) %></p>
+  <% suggestions.forEach(function (s) { %><a class="qchip" href="/assistant?tab=hoi-dap&amp;q=<%= encodeURIComponent(s) %>"><%= s %></a> <% }) %></p>
 <%- include('_qa-result', { result: result }) %>
 <% } %>
 
