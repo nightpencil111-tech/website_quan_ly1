@@ -6,10 +6,11 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // opts: models (tên mô hình cho /api/tags), chunks (các đoạn nội dung trả về), delayMs (nghỉ giữa các đoạn),
 // hang (gửi header + các đoạn rồi treo, không bao giờ kết thúc), status (mã lỗi HTTP cho /api/chat),
 // errorLine (chuỗi lỗi gửi thành dòng {"error": ...} sau các đoạn), redirect (trả 302 sang địa chỉ khác).
+// noDone (kết thúc stream mà không gửi dòng done:true), badLines (các dòng thô, vd JSON hỏng, gửi trước các đoạn).
 // Trả {url, requests, abortedByClient(), close()}; close() hủy cả các kết nối đang mở.
 async function startFakeOllama(opts = {}) {
   const {
-    models = ['qwen2.5:3b'], chunks = [], delayMs = 0, hang = false, status = 200, errorLine = null, redirect = null,
+    models = ['qwen2.5:3b'], chunks = [], delayMs = 0, hang = false, status = 200, errorLine = null, redirect = null, noDone = false, badLines = [],
   } = opts;
   const requests = [];
   const sockets = new Set();
@@ -39,6 +40,7 @@ async function startFakeOllama(opts = {}) {
       res.writeHead(200, { 'content-type': 'application/x-ndjson' });
       res.on('close', () => { if (!res.writableFinished) abortedByClient += 1; });
       try {
+        for (const l of badLines) res.write(l + '\n');
         for (const c of chunks) {
           if (res.destroyed) return;
           const line = Buffer.from(JSON.stringify({ model: 'gia', message: { role: 'assistant', content: c }, done: false }) + '\n');
@@ -50,6 +52,7 @@ async function startFakeOllama(opts = {}) {
           if (delayMs) await wait(delayMs);
         }
         if (hang) return; // treo: không kết thúc
+        if (noDone) return res.end();
         if (errorLine) res.write(JSON.stringify({ error: errorLine }) + '\n');
         else res.write(JSON.stringify({ model: 'gia', message: { role: 'assistant', content: '' }, done: true }) + '\n');
         res.end();
