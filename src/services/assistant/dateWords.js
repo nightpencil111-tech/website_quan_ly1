@@ -71,12 +71,12 @@ const PATTERNS = [
   { re: `${B}ngay (?:kia|mot)${E}`, fn: (m, t) => addDays(t, 2) },
   {
     // "thứ X" / "chủ nhật" / "CN", có thể kèm "tuần sau|tuần tới".
-    // "thứ X tuần sau" = lần tới của thứ X (kể cả hôm nay) + 7 ngày.
+    // "thứ X tuần sau" = thứ X của tuần lịch kế tiếp (Thứ Hai tuần sau + X − 1; Chủ nhật = +6).
     re: `${B}(?:thu (hai|ba|tu|nam|sau|bay|[2-7])|chu nhat|cn)(?: (tuan (?:sau|toi)))?${E}`,
     fn: (m, t) => {
       const wd = m[1] ? WD[m[1]] : 7;
-      const base = nextWeekday(t, wd);
-      return m[2] ? addDays(base, 7) : base;
+      if (m[2]) return addDays(t, 8 - weekday(t) + wd - 1);
+      return nextWeekday(t, wd);
     },
     check: (orig, folded, start, m) => !m[1] || origMatches(orig, folded, start, start + 3, ['thứ']),
   },

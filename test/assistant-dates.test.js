@@ -19,7 +19,11 @@ test('foldAligned giữ nguyên độ dài để ánh xạ về câu gốc', () 
 test('thứ trong tuần quanh mốc thứ Sáu', () => {
   assert.equal(d('hạn thứ Sáu'), '2026-11-13');
   assert.equal(d('thứ hai'), '2026-11-16');
-  assert.equal(d('thu 2 tuan sau'), '2026-11-23');
+  assert.equal(d('thu 2 tuan sau'), '2026-11-16');
+  assert.equal(d('thứ Sáu tuần sau'), '2026-11-20');
+  assert.equal(d('chủ nhật tuần sau'), '2026-11-22');
+  assert.equal(d('thứ hai tuần sau', '2026-11-15'), '2026-11-16');
+  assert.equal(d('thứ hai tuần sau', '2026-11-16'), '2026-11-23');
   assert.equal(d('xong trước chủ nhật'), '2026-11-15');
   assert.equal(d('hạn CN'), '2026-11-15');
   assert.equal(d('thứ 7'), '2026-11-14');
