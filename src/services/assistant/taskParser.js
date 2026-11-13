@@ -264,4 +264,27 @@ function parseTaskSentence(db, text, today) {
   };
 }
 
-module.exports = { parseTaskSentence };
+// Tìm người theo cụm tên đứng ở đầu một đoạn văn bản (đã bỏ dấu), ví dụ "dc An dang lam gi".
+// Bỏ từ dẫn đ/c, đồng chí; lấy tối đa 4 từ trong tập từ tên, cụm dài nhất khớp trước.
+// Trả về {phrase, found: [{id, full_name, unit_name}]}; nhiều người → found.length > 1 (không tự chọn).
+function findPersonByText(db, foldedRest) {
+  const cands = loadCandidates(db);
+  const words = String(foldedRest).replace(/[?!,;:]+/g, ' ').replace(/\.(?=\s|$)/g, ' ').split(/\s+/).filter(Boolean);
+  if (words[0] === 'dong' && words[1] === 'chi') words.splice(0, 2);
+  else if (['d/c', 'd.c', 'dc'].includes(words[0])) words.shift();
+  const nameTokens = new Set(cands.flatMap((c) => c.words));
+  const take = [];
+  for (const w of words) {
+    if (take.length >= 4 || !nameTokens.has(w)) break;
+    take.push(w);
+  }
+  for (let k = take.length; k >= 1; k--) {
+    const found = resolveName(cands, take.slice(0, k).join(' '));
+    if (found.length) {
+      return { phrase: take.slice(0, k).join(' '), found: found.map(({ id, full_name, unit_name }) => ({ id, full_name, unit_name })) };
+    }
+  }
+  return { phrase: take.join(' ') || words[0] || '', found: [] };
+}
+
+module.exports = { parseTaskSentence, findPersonByText };
