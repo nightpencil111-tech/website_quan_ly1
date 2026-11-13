@@ -100,3 +100,18 @@ test('mã dự phòng: 10 mã dạng ABCD-EFGH, băm scrypt, dùng đúng mã n�
   assert.equal(totp.matchRecoveryCode('AAAA-AAAA', hashes), -1);
   assert.equal(totp.matchRecoveryCode('', hashes), -1);
 });
+
+test('enableForUser không bao giờ ghi đè bản 2 lớp đã bật', () => {
+  const { makeDb } = require('./helpers');
+  const db = makeDb();
+  const uid = Number(db.prepare("INSERT INTO users (username, password_hash, full_name, role) VALUES ('u', 'x', 'U', 'manager')").run().lastInsertRowid);
+  assert.equal(totp.enableForUser(db, uid, 'ENC1', ['h1'], 5), true);
+  const before = db.prepare('SELECT * FROM user_totp WHERE user_id = ?').get(uid);
+  assert.equal(before.enabled, 1);
+  assert.equal(totp.enableForUser(db, uid, 'ENC2', ['h2'], 9), false, 'đã bật → từ chối');
+  assert.deepEqual(db.prepare('SELECT * FROM user_totp WHERE user_id = ?').get(uid), before);
+  // Bản chưa bật (dữ liệu cũ) thì được thay.
+  db.prepare('UPDATE user_totp SET enabled = 0 WHERE user_id = ?').run(uid);
+  assert.equal(totp.enableForUser(db, uid, 'ENC3', ['h3'], 11), true);
+  assert.equal(db.prepare('SELECT secret_enc FROM user_totp WHERE user_id = ?').get(uid).secret_enc, 'ENC3');
+});

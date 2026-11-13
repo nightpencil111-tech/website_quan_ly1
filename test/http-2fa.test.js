@@ -35,7 +35,7 @@ function client(base, ip = '10.9.8.7') {
     const r = take(await fetch(base + url, { headers: { cookie: c.cookie, 'x-forwarded-for': c.ip }, redirect: 'manual' }));
     const text = await r.text();
     readCsrf(text);
-    return { status: r.status, location: r.headers.get('location'), text };
+    return { status: r.status, location: r.headers.get('location'), text, headers: Object.fromEntries(r.headers) };
   };
   c.post = async (url, body = {}) => {
     const r = take(await fetch(base + url, {
@@ -45,7 +45,7 @@ function client(base, ip = '10.9.8.7') {
     }));
     const text = await r.text();
     readCsrf(text);
-    return { status: r.status, location: r.headers.get('location'), text };
+    return { status: r.status, location: r.headers.get('location'), text, headers: Object.fromEntries(r.headers) };
   };
   c.login = (username, password = PW) => c.post('/login', { username, password });
   return c;
@@ -87,20 +87,32 @@ test('luồng 2 lớp ở chế độ Internet cho manager: bắt buộc bật, 
   assert.equal(r.location, '/2fa/setup');
   assert.equal(s.db.prepare("SELECT COUNT(*) c FROM tasks WHERE title = 'Lách 2 lớp'").get().c, 0);
 
-  // Secret trong CSDL không phải bản rõ.
-  const row = s.db.prepare('SELECT * FROM user_totp WHERE user_id = ?').get(uid);
-  assert.equal(row.enabled, 0);
-  assert.ok(!row.secret_enc.includes(secret));
-  assert.equal(totp.decryptSecret(row.secret_enc, s.app.locals.totpKey), secret);
+  // Secret chờ xác nhận gắn với phiên (không ghi vào user_totp trước khi xác nhận), không phải bản rõ.
+  assert.equal(s.db.prepare('SELECT COUNT(*) c FROM user_totp WHERE user_id = ?').get(uid).c, 0);
+  const pend = s.db.prepare('SELECT mfa_secret_enc FROM sessions WHERE user_id = ?').get(uid);
+  assert.ok(!pend.mfa_secret_enc.includes(secret));
+  assert.equal(totp.decryptSecret(pend.mfa_secret_enc, s.app.locals.totpKey), secret);
+  r = await c.get('/2fa/setup');
+  assert.equal(secretFromPage(r.text), secret, 'tải lại trang: cùng một secret');
+  assert.equal(r.headers['cache-control'], 'no-store');
 
   // Mã sai → báo lỗi, chưa bật.
   r = await c.post('/2fa/setup', { code: '000000' === totp.totpAt(secret, stepOf(now)) ? '111111' : '000000' });
   assert.equal(r.status, 200);
   assert.match(r.text, /Mã xác nhận không đúng/);
 
-  // 2. Bật bằng mã đúng → hiện 10 mã dự phòng một lần.
+  // 2. Bật bằng mã đúng → hiện 10 mã dự phòng một lần; mã phiên và csrf được đổi mới.
+  const oldCookie = c.cookie;
+  const oldCsrf = c.csrf;
   r = await c.post('/2fa/setup', { code: totp.totpAt(secret, stepOf(now)) });
   assert.equal(r.status, 200);
+  assert.equal(r.headers['cache-control'], 'no-store');
+  assert.notEqual(c.cookie, oldCookie, 'đổi mã phiên khi qua 2 lớp');
+  assert.notEqual(c.csrf, oldCsrf, 'đổi csrf khi qua 2 lớp');
+  assert.equal(s.db.prepare('SELECT COUNT(*) c FROM sessions WHERE id = ?').get(oldCookie.slice(4)).c, 0);
+  const stored = s.db.prepare('SELECT secret_enc FROM user_totp WHERE user_id = ?').get(uid).secret_enc;
+  assert.ok(!stored.includes(secret));
+  assert.equal(totp.decryptSecret(stored, s.app.locals.totpKey), secret);
   const codes = codesFromPage(r.text);
   assert.equal(new Set(codes).size, 10);
   assert.match(r.text, /Tôi đã lưu các mã này/);
@@ -110,6 +122,7 @@ test('luồng 2 lớp ở chế độ Internet cho manager: bắt buộc bật, 
   assert.equal(r.status, 200, 'đã qua 2 lớp → vào được');
   r = await c.get('/account/security');
   assert.equal(r.status, 200);
+  assert.equal(r.headers['cache-control'], 'no-store');
   assert.match(r.text, /Đã bật/);
   assert.match(r.text, /Còn 10 mã dự phòng/);
   assert.equal(codesFromPage(r.text).length, 0, 'mã dự phòng chỉ hiện một lần');
@@ -160,9 +173,12 @@ test('luồng 2 lớp ở chế độ Internet cho manager: bắt buộc bật, 
   assert.equal(r.location, '/2fa/verify');
   await d.get('/2fa/verify');
   const code = totp.totpAt(secret, stepOf(now));
+  const pendingCookie = d.cookie;
   r = await d.post('/2fa/verify', { code });
   assert.equal(r.status, 302);
   assert.equal(r.location, '/');
+  assert.notEqual(d.cookie, pendingCookie, 'đổi mã phiên khi qua 2 lớp');
+  assert.equal((await fetch(s.base + '/tasks', { headers: { cookie: pendingCookie }, redirect: 'manual' })).headers.get('location'), '/login');
   assert.equal((await d.get('/tasks')).status, 200);
   const e = client(s.base, '10.1.1.2');
   await e.login('quanly1');
@@ -327,4 +343,120 @@ test('nhãn nhật ký 2 lớp tiếng Việt', () => {
   for (const k of ['totp_enable', 'totp_disable', 'totp_reset', 'recovery_code_used']) {
     assert.match(src, new RegExp(k + ": '[^']+'"), k);
   }
+});
+
+test('tranh chấp bật 2 lớp: phiên kẻ gian (đã có mật khẩu) không thay được secret người thật vừa bật', async (t) => {
+  let now = Date.now();
+  const s = await startServer({ config: INTERNET, now: () => now });
+  t.after(() => s.close());
+  const uid = addUser(s.db, 'quanly7', 'manager');
+  const attacker = client(s.base, '10.6.6.6');
+  const user = client(s.base, '10.7.7.7');
+  // Kẻ gian vào bước bật trước.
+  assert.equal((await attacker.login('quanly7')).location, '/2fa/setup');
+  const sA = secretFromPage((await attacker.get('/2fa/setup')).text);
+  // Người thật bật trên phiên khác: không thấy secret của kẻ gian.
+  assert.equal((await user.login('quanly7')).location, '/2fa/setup');
+  const sU = secretFromPage((await user.get('/2fa/setup')).text);
+  assert.notEqual(sU, sA, 'mỗi phiên một secret riêng');
+  let r = await user.post('/2fa/setup', { code: totp.totpAt(sU, stepOf(now)) });
+  const codes = codesFromPage(r.text);
+  assert.equal(codes.length, 10);
+  const before = s.db.prepare('SELECT secret_enc, recovery_hashes, enabled FROM user_totp WHERE user_id = ?').get(uid);
+  // Kẻ gian quay lại trang bật / gửi mã từ secret của mình.
+  now += 30000;
+  r = await attacker.get('/2fa/setup');
+  assert.equal(r.status, 302);
+  assert.equal(r.location, '/2fa/verify', 'phiên chờ bật chuyển sang nhập mã khi tài khoản đã bật');
+  r = await attacker.post('/2fa/setup', { code: totp.totpAt(sA, stepOf(now)) });
+  assert.equal(r.location, '/2fa/verify');
+  r = await attacker.post('/2fa/verify', { code: totp.totpAt(sA, stepOf(now)) });
+  assert.equal(r.status, 200);
+  assert.match(r.text, /Mã xác nhận không đúng/);
+  assert.equal((await attacker.get('/tasks')).location, '/2fa/verify');
+  const after = s.db.prepare('SELECT secret_enc, recovery_hashes, enabled FROM user_totp WHERE user_id = ?').get(uid);
+  assert.deepEqual(after, before, 'secret và mã dự phòng giữ nguyên');
+  assert.equal(totp.decryptSecret(after.secret_enc, s.app.locals.totpKey), sU);
+  // Mã dự phòng của người thật vẫn dùng được (bộ mã không bị thay).
+  r = await user.post('/logout');
+  const u2 = client(s.base, '10.7.7.8');
+  await u2.login('quanly7');
+  await u2.get('/2fa/verify');
+  r = await u2.post('/2fa/recovery', { recovery_code: codes[0] });
+  assert.equal(r.location, '/');
+});
+
+test('khóa xác thực 2 lớp theo tài khoản: 10 mã sai (nhiều IP, nhiều phiên) → khóa 15 phút, đăng nhập lại không xóa bộ đếm', async (t) => {
+  let now = Date.now();
+  const s = await startServer({ config: INTERNET, now: () => now });
+  t.after(() => s.close());
+  const uid = addUser(s.db, 'quanly8', 'manager');
+  const secret = totp.generateSecret();
+  const codes = totp.makeRecoveryCodes();
+  s.db.prepare('INSERT INTO user_totp (user_id, secret_enc, enabled, recovery_hashes) VALUES (?, ?, 1, ?)')
+    .run(uid, totp.encryptSecret(secret, s.app.locals.totpKey), JSON.stringify(totp.hashRecoveryCodes(codes)));
+  const wrong = () => {
+    const good = [-1, 0, 1].map((d) => totp.totpAt(secret, stepOf(now) + d));
+    return ['000000', '111111', '222222', '333333'].find((x) => !good.includes(x));
+  };
+  // 4 IP, mỗi IP một phiên: 3 mã sai + 0..; tổng 10 (gồm cả mã dự phòng sai).
+  let n = 0;
+  let r;
+  for (const ip of ['10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4']) {
+    const c = client(s.base, ip);
+    assert.equal((await c.login('quanly8')).location, '/2fa/verify');
+    await c.get('/2fa/verify');
+    for (let i = 0; i < 3 && n < 10; i++, n++) {
+      r = n % 2 ? await c.post('/2fa/recovery', { recovery_code: 'AAAA-AAAA' }) : await c.post('/2fa/verify', { code: wrong() });
+    }
+  }
+  assert.equal(n, 10);
+  assert.equal(r.status, 429);
+  assert.match(r.text, /Tài khoản tạm khóa xác thực 2 lớp 15 phút do nhập sai nhiều lần/);
+  assert.equal(s.db.prepare("SELECT COUNT(*) c FROM audit_log WHERE action = 'totp_locked'").get().c, 1);
+  // IP mới, phiên mới, mã đúng → vẫn bị khóa; mã dự phòng đúng cũng bị khóa.
+  const c = client(s.base, '10.0.0.9');
+  assert.equal((await c.login('quanly8')).location, '/2fa/verify', 'đăng nhập lại bằng mật khẩu vẫn được nhưng không xóa khóa');
+  await c.get('/2fa/verify');
+  r = await c.post('/2fa/verify', { code: totp.totpAt(secret, stepOf(now)) });
+  assert.equal(r.status, 429);
+  assert.match(r.text, /Tài khoản tạm khóa xác thực 2 lớp/);
+  r = await c.post('/2fa/recovery', { recovery_code: codes[0] });
+  assert.equal(r.status, 429);
+  assert.equal((await c.get('/tasks')).location, '/2fa/verify');
+  // Sau 15 phút: mã đúng vào được, bộ đếm về 0.
+  now += 15 * 60 * 1000 + 1000;
+  const d = client(s.base, '10.0.0.10');
+  await d.login('quanly8');
+  await d.get('/2fa/verify');
+  r = await d.post('/2fa/verify', { code: totp.totpAt(secret, stepOf(now)) });
+  assert.equal(r.location, '/');
+  const row = s.db.prepare('SELECT fails, locked_until FROM user_totp WHERE user_id = ?').get(uid);
+  assert.equal(row.fails, 0);
+  assert.equal(row.locked_until, null);
+});
+
+test('chế độ Internet: tắt / tạo lại mã dự phòng trên trang Bảo mật tài khoản bị giới hạn theo IP', async (t) => {
+  let now = Date.now();
+  const s = await startServer({ config: INTERNET, now: () => now });
+  t.after(() => s.close());
+  const uid = addUser(s.db, 'thanhvien2', 'member');
+  const c = client(s.base, '10.3.3.3');
+  await c.login('thanhvien2');
+  const secret = secretFromPage((await c.get('/2fa/setup')).text);
+  await c.post('/2fa/setup', { code: totp.totpAt(secret, stepOf(now)) });
+  await c.get('/account/security');
+  now += 30000;
+  let r;
+  for (let i = 0; i < 10; i++) {
+    r = await c.post(i % 2 ? '/account/security/disable' : '/account/security/recovery-codes', { code: 'abcdef' });
+    if (i < 9) assert.equal(r.status, 200);
+  }
+  assert.equal(r.status, 429);
+  assert.match(r.text, new RegExp(BLOCK_MSG));
+  r = await c.post('/account/security/disable', { code: totp.totpAt(secret, stepOf(now)) });
+  assert.equal(r.status, 429, 'IP bị khóa: mã đúng cũng không tắt được');
+  r = await c.post('/account/security/recovery-codes', { code: totp.totpAt(secret, stepOf(now)) });
+  assert.equal(r.status, 429);
+  assert.equal(s.db.prepare('SELECT enabled FROM user_totp WHERE user_id = ?').get(uid).enabled, 1);
 });

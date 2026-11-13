@@ -152,6 +152,12 @@ function loadSession(db) {
       if (row && row.expires_at > now && row.active) {
         let state = row.mfa_pending;
         let deadline = row.mfa_deadline;
+        // Trạng thái chờ luôn suy lại từ CSDL: tài khoản đã bật 2 lớp (vd. trên phiên khác) thì phiên chờ bật
+        // chuyển sang nhập mã (giữ hạn và số lần sai) — phiên cũ không được bật lại/thay secret.
+        if (state === 'setup' && row.totp_enabled) {
+          state = 'verify';
+          db.prepare("UPDATE sessions SET mfa_pending = 'verify', mfa_secret_enc = NULL WHERE id = ?").run(sid);
+        }
         // Phiên đã có từ trước (vd. tạo khi còn chạy chế độ nội bộ) của vai trò bắt buộc mà chưa bật 2 lớp → buộc bật.
         if (!state && mfaRequiredByRole(config, row.role) && !row.totp_enabled) {
           state = 'setup';
@@ -195,10 +201,25 @@ function mfaGate(req, res, next) {
   return res.redirect(`/2fa/${req.pending.state}`);
 }
 
-// Hoàn tất bước 2 lớp: phiên trở thành phiên đăng nhập đầy đủ.
-function completeMfa(db, sessionId) {
-  db.prepare('UPDATE sessions SET mfa_pending = NULL, mfa_deadline = NULL, mfa_fails = 0, expires_at = ? WHERE id = ?')
-    .run(Date.now() + SESSION_MS, sessionId);
+// Hoàn tất bước 2 lớp: thay bằng phiên đăng nhập đầy đủ với mã phiên và csrf MỚI (xóa phiên chờ cũ).
+function completeMfa(db, req, res) {
+  const old = db.prepare('SELECT user_id FROM sessions WHERE id = ?').get(req.sessionId);
+  if (!old) return;
+  const sid = crypto.randomBytes(32).toString('hex');
+  const csrf = crypto.randomBytes(24).toString('hex');
+  db.exec('BEGIN');
+  try {
+    db.prepare('INSERT INTO sessions (id, user_id, csrf, expires_at) VALUES (?, ?, ?, ?)').run(sid, old.user_id, csrf, Date.now() + SESSION_MS);
+    db.prepare('DELETE FROM sessions WHERE id = ?').run(req.sessionId);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  req.sessionId = sid;
+  req.csrf = csrf;
+  res.locals.csrf = csrf;
+  setSessionCookie(res, sid);
 }
 
 function forbid(res) {

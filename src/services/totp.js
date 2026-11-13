@@ -168,7 +168,22 @@ function matchRecoveryCode(code, hashes) {
   return found;
 }
 
+// Ghi bản đã bật cho người dùng — KHÔNG BAO GIỜ ghi đè một bản đã bật (chống phiên cũ thay secret).
+// Trả về true nếu đã bật, false nếu tài khoản đã có bản bật từ trước.
+function enableForUser(db, userId, secretEnc, recoveryHashes, step) {
+  const r = db.prepare(
+    `INSERT INTO user_totp (user_id, secret_enc, enabled, recovery_hashes, last_step, fails, locked_until)
+     VALUES (?, ?, 1, ?, ?, 0, NULL)
+     ON CONFLICT(user_id) DO UPDATE SET secret_enc = excluded.secret_enc, enabled = 1,
+       recovery_hashes = excluded.recovery_hashes, last_step = excluded.last_step, fails = 0, locked_until = NULL,
+       created_at = datetime('now')
+     WHERE user_totp.enabled = 0`
+  ).run(userId, secretEnc, JSON.stringify(recoveryHashes), step);
+  return r.changes === 1;
+}
+
 module.exports = {
+  enableForUser,
   base32Encode, base32Decode, generateSecret, totpAt, verifyTotp, otpauthUri, formatSecret,
   loadKey, encryptSecret, decryptSecret, makeRecoveryCodes, normalizeRecoveryCode, hashRecoveryCodes, matchRecoveryCode,
   ISSUER, PERIOD_MS,

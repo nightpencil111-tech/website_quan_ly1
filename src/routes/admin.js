@@ -38,6 +38,7 @@ const AUDIT_ACTIONS = {
   login_ip_blocked: 'Khóa thiết bị (IP) do đăng nhập sai nhiều lần',
   totp_enable: 'Bật xác thực 2 lớp', totp_disable: 'Tắt xác thực 2 lớp', totp_reset: 'Đặt lại xác thực 2 lớp',
   totp_recovery_regen: 'Tạo lại mã dự phòng 2 lớp', recovery_code_used: 'Đăng nhập bằng mã dự phòng 2 lớp',
+  totp_locked: 'Tạm khóa xác thực 2 lớp do nhập sai nhiều lần',
 };
 
 module.exports = (db) => {

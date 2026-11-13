@@ -229,6 +229,12 @@ const MIGRATIONS = [
   ALTER TABLE sessions ADD COLUMN mfa_deadline INTEGER;
   ALTER TABLE sessions ADD COLUMN mfa_fails INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  ALTER TABLE sessions ADD COLUMN mfa_secret_enc TEXT;
+  ALTER TABLE user_totp ADD COLUMN fails INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE user_totp ADD COLUMN locked_until INTEGER;
+  DELETE FROM user_totp WHERE enabled = 0;
+  `,
 ];
 
 // Migration đánh số phiên bản; schema_version giữ một dòng cho mỗi phiên bản đã áp dụng.
