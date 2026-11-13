@@ -31,7 +31,7 @@
   <% if (manager) { %>
   <div class="actions-row">
     <a class="btn" href="/tasks/<%= task.id %>/edit">Sửa</a>
-    <form method="post" action="/tasks/<%= task.id %>/delete" class="inline" onsubmit="return confirm('Xóa công việc này? Thao tác không thể hoàn tác.');">
+    <form method="post" action="/tasks/<%= task.id %>/delete" class="inline" data-confirm="Xóa công việc này? Thao tác không thể hoàn tác.">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <button type="submit" class="btn btn-danger">Xóa</button>
     </form>

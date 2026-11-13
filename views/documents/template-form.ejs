@@ -43,10 +43,10 @@
 </div>
 <div class="btn-row">
   <% if (t.builtin_key) { %>
-    <form method="post" action="/documents/templates/<%= t.id %>/restore" style="display:inline" onsubmit="return confirm('Khôi phục mẫu về bản gốc? Mọi chỉnh sửa sẽ mất.')">
+    <form method="post" action="/documents/templates/<%= t.id %>/restore" style="display:inline" data-confirm="Khôi phục mẫu về bản gốc? Mọi chỉnh sửa sẽ mất.">
       <input type="hidden" name="_csrf" value="<%= csrf %>"><button type="submit" class="btn">Khôi phục mẫu gốc</button></form>
   <% } else { %>
-    <form method="post" action="/documents/templates/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Xóa mẫu này? Không thể hoàn tác.')">
+    <form method="post" action="/documents/templates/<%= t.id %>/delete" style="display:inline" data-confirm="Xóa mẫu này? Không thể hoàn tác.">
       <input type="hidden" name="_csrf" value="<%= csrf %>"><button type="submit" class="btn btn-danger">Xóa mẫu</button></form>
   <% } %>
 </div>

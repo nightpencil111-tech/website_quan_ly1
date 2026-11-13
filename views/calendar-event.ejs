@@ -14,7 +14,7 @@
   <button type="submit" class="btn btn-primary">Lưu</button>
   <a class="btn" href="/calendar?y=<%= target.start_date.slice(0, 4) %>&m=<%= Number(target.start_date.slice(5, 7)) %>">Quay lại lịch</a>
 </form>
-<form method="post" action="/calendar/events/<%= target.id %>/delete" class="inline" style="margin-top:12px;display:block" onsubmit="return confirm('Đồng chí chắc chắn xóa sự kiện này?')">
+<form method="post" action="/calendar/events/<%= target.id %>/delete" class="inline" style="margin-top:12px;display:block" data-confirm="Đồng chí chắc chắn xóa sự kiện này?">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <button type="submit" class="btn btn-danger">Xóa sự kiện</button>
 </form>

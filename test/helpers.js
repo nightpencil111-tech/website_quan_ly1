@@ -9,10 +9,11 @@ function makeDb() {
 }
 
 // Khởi động server tạm trên cổng ngẫu nhiên, CSDL tạm đã seed.
-async function startServer() {
+// opts.config: cấu hình chạy (mặc định chế độ nội bộ); opts.now: đồng hồ giả cho bộ chống dò mật khẩu.
+async function startServer(opts = {}) {
   const { createApp } = require('../src/server');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'quanly-ctv-srv-'));
-  const { app, db } = createApp({ dbPath: path.join(dir, 'test.db') });
+  const { app, db } = createApp({ dbPath: path.join(dir, 'test.db'), config: opts.config || { mode: 'noi_bo' }, now: opts.now });
   seed(db);
   const server = await new Promise((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
@@ -21,6 +22,7 @@ async function startServer() {
   return {
     base,
     db,
+    app,
     close: () => new Promise((resolve) => {
       server.closeAllConnections?.();
       server.close(() => { try { db.close(); } catch {} resolve(); });

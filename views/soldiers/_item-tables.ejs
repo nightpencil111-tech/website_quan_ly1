@@ -27,7 +27,7 @@ const cols = COLS[type].filter(function (c) { return !(c[0] === 'hardship_note' 
       <% if (manage) { %>
       <td class="actions">
         <a class="btn" href="/soldiers/<%= soldierId %>/<%= type %>/<%= row.id %>/edit">Sửa</a>
-        <form method="post" action="/soldiers/<%= soldierId %>/<%= type %>/<%= row.id %>/delete" class="inline" onsubmit="return confirm('Xóa mục này? Thao tác không thể hoàn tác.');">
+        <form method="post" action="/soldiers/<%= soldierId %>/<%= type %>/<%= row.id %>/delete" class="inline" data-confirm="Xóa mục này? Thao tác không thể hoàn tác.">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <button type="submit" class="btn btn-danger">Xóa</button>
         </form>

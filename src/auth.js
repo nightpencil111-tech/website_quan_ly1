@@ -95,12 +95,18 @@ function parseCookies(header) {
   return out;
 }
 
+// Chế độ Internet (qua HTTPS của Tailscale Funnel): cookie thêm Secure.
+function cookieSuffix(res) {
+  const config = res.app && res.app.locals && res.app.locals.config;
+  return config && config.mode === 'internet' ? '; Secure' : '';
+}
+
 function setSessionCookie(res, sessionId) {
-  res.append('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_MS / 1000}`);
+  res.append('Set-Cookie', `${COOKIE_NAME}=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_MS / 1000}${cookieSuffix(res)}`);
 }
 
 function clearSessionCookie(res) {
-  res.append('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`);
+  res.append('Set-Cookie', `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${cookieSuffix(res)}`);
 }
 
 function loadSession(db) {

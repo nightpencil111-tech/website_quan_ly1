@@ -24,7 +24,7 @@
           <input type="hidden" name="active" value="<%= u.active ? 0 : 1 %>">
           <button type="submit" class="btn"><%= u.active ? 'Khóa' : 'Mở khóa' %></button>
         </form>
-        <form method="post" action="/admin/users/<%= u.id %>/reset" class="inline" onsubmit="return confirm('Đặt lại mật khẩu cho tài khoản này?');">
+        <form method="post" action="/admin/users/<%= u.id %>/reset" class="inline" data-confirm="Đặt lại mật khẩu cho tài khoản này?">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <button type="submit" class="btn">Đặt lại mật khẩu</button>
         </form>

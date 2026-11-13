@@ -3,11 +3,21 @@ const fs = require('node:fs');
 const express = require('express');
 const { openDb, seed } = require('./db');
 const auth = require('./auth');
+const { loadConfig, normalizeConfig } = require('./config');
+const { securityHeaders, createIpLimiter } = require('./security');
 
-function createApp({ dbPath }) {
+// config: cấu hình chạy (mặc định đọc từ biến môi trường + quanly.config.json); now: đồng hồ (để test giả lập thời gian).
+function createApp({ dbPath, config, now } = {}) {
+  config = config ? normalizeConfig(config) : loadConfig(process.env, path.join(__dirname, '..'));
   const db = openDb(dbPath);
   const app = express();
   app.disable('x-powered-by');
+  app.locals.config = config;
+  app.locals.ipLimiter = createIpLimiter(now ? { now } : {});
+  // Chế độ Internet: Tailscale Funnel chuyển tiếp từ 127.0.0.1 → chỉ tin X-Forwarded-For từ localhost.
+  // Chế độ nội bộ: không tin proxy nào (req.ip = địa chỉ kết nối thật).
+  app.set('trust proxy', config.mode === 'internet' ? 'loopback' : false);
+  app.use(securityHeaders(config));
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
   app.locals.db = db;
@@ -98,8 +108,23 @@ module.exports = { createApp };
 if (require.main === module) {
   const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'data.db');
   fs.mkdirSync(path.dirname(path.resolve(dbPath)), { recursive: true });
-  const { app, db } = createApp({ dbPath });
+  let config;
+  try {
+    config = loadConfig(process.env, path.join(__dirname, '..'));
+  } catch (e) {
+    console.error('Không khởi động được: ' + e.message);
+    process.exit(1);
+  }
+  const { app, db } = createApp({ dbPath, config });
   seed(db);
+  const { startupProblems } = require('./startupCheck');
+  const problems = startupProblems(db, config);
+  if (problems.length) {
+    console.error('Từ chối chạy ở chế độ Internet vì chưa an toàn:');
+    problems.forEach((p, i) => console.error(`  ${i + 1}. ${p}`));
+    try { db.close(); } catch { /* bỏ qua */ }
+    process.exit(1);
+  }
   const { generateDue } = require('./services/recurring');
   const { today } = require('./util/date');
   const runRecurring = () => {
@@ -107,10 +132,16 @@ if (require.main === module) {
   };
   runRecurring();
   setInterval(runRecurring, 3600 * 1000).unref();
-  const port = Number(process.env.PORT) || 3000;
-  const server = app.listen(port, '0.0.0.0', () => {
+  const port = config.port;
+  // Chế độ Internet chỉ nghe 127.0.0.1 (Funnel nối vào localhost) trừ khi cấu hình listenLan: true.
+  const host = config.mode === 'internet' && !config.listenLan ? '127.0.0.1' : '0.0.0.0';
+  const server = app.listen(port, host, () => {
     console.log(`Hệ thống đã chạy. Mở trình duyệt và truy cập: http://localhost:${port}`);
-    console.log('Các máy khác trong mạng nội bộ truy cập qua địa chỉ IP của máy này, cổng ' + port);
+    if (config.mode === 'internet') {
+      console.log(`Chế độ Internet: truy cập từ xa qua ${config.publicUrl}`);
+      if (host === '127.0.0.1') console.log('Chỉ nhận kết nối từ chính máy này (Tailscale Funnel); các máy trong mạng nội bộ không truy cập trực tiếp được.');
+    }
+    if (host === '0.0.0.0') console.log('Các máy khác trong mạng nội bộ truy cập qua địa chỉ IP của máy này, cổng ' + port);
   });
   // Tắt êm: đóng CSDL để WAL được ghi gọn vào data.db.
   let closing = false;

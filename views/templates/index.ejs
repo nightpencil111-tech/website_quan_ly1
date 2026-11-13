@@ -17,7 +17,7 @@
         <td>
           <a class="btn btn-primary" href="/tasks/new?template=<%= t.id %>">Giao theo mẫu</a>
           <a class="btn" href="/templates/<%= t.id %>/edit">Sửa</a>
-          <form method="post" action="/templates/<%= t.id %>/delete" class="inline" onsubmit="return confirm('Xóa mẫu này?');">
+          <form method="post" action="/templates/<%= t.id %>/delete" class="inline" data-confirm="Xóa mẫu này?">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
             <button type="submit" class="btn">Xóa</button>
           </form>
@@ -48,7 +48,7 @@
         <td><%= x.active ? 'Đang chạy' : 'Tạm dừng' %></td>
         <td>
           <a class="btn" href="/templates/recurring/<%= x.id %>/edit">Sửa</a>
-          <form method="post" action="/templates/recurring/<%= x.id %>/delete" class="inline" onsubmit="return confirm('Xóa quy tắc này?');">
+          <form method="post" action="/templates/recurring/<%= x.id %>/delete" class="inline" data-confirm="Xóa quy tắc này?">
             <input type="hidden" name="_csrf" value="<%= csrf %>">
             <button type="submit" class="btn">Xóa</button>
           </form>

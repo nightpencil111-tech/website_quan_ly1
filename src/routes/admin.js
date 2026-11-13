@@ -35,6 +35,7 @@ const AUDIT_ACTIONS = {
   soldier_leave_create: 'Thêm nghỉ phép', soldier_leave_update: 'Sửa nghỉ phép', soldier_leave_delete: 'Xóa nghỉ phép',
   soldier_thought_create: 'Thêm ghi nhận tư tưởng', soldier_thought_update: 'Sửa ghi nhận tư tưởng', soldier_thought_delete: 'Xóa ghi nhận tư tưởng',
   ai_run: 'Dùng trợ lý AI', ai_settings: 'Đổi cài đặt trợ lý AI',
+  login_ip_blocked: 'Khóa thiết bị (IP) do đăng nhập sai nhiều lần',
 };
 
 module.exports = (db) => {

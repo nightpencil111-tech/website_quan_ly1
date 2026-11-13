@@ -80,12 +80,4 @@
   <a class="btn" href="/documents">Quay lại</a>
 </form>
 <script src="/js/assistant.js" defer></script>
-<script>
-(function () {
-  var all = document.getElementById('check-all');
-  if (!all) return;
-  all.addEventListener('change', function () {
-    document.querySelectorAll('.pick').forEach(function (c) { c.checked = all.checked; });
-  });
-})();
-</script>
+<script src="/js/check-all.js"></script>

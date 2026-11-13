@@ -1,7 +1,7 @@
 <h1>Quân số</h1>
 <form method="get" action="/people" class="inline-form">
   <label>Đơn vị
-    <select name="unit" onchange="this.form.submit()">
+    <select name="unit" data-autosubmit>
       <option value="">Tất cả</option>
       <% units.forEach(function (u) { %><option value="<%= u.id %>" <%= unitId === u.id ? 'selected' : '' %>><%= u.name %></option><% }) %>
     </select>

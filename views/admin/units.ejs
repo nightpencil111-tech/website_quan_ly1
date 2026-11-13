@@ -20,7 +20,7 @@
       </td>
       <td><%= u.member_count %></td>
       <td>
-        <form method="post" action="/admin/units/<%= u.id %>/delete" class="inline" onsubmit="return confirm('Xóa đơn vị này?');">
+        <form method="post" action="/admin/units/<%= u.id %>/delete" class="inline" data-confirm="Xóa đơn vị này?">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <button type="submit" class="btn">Xóa</button>
         </form>

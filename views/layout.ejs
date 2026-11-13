@@ -16,11 +16,13 @@ const isActive = (h) => h === '/' ? path === '/' : path === h || path.startsWith
   <meta name="csrf" content="<%= csrf %>">
   <title><%= title %> – Quản lý công tác chính trị</title>
   <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/confirm.js" defer></script>
+  <script src="/js/ui.js" defer></script>
 </head>
 <body class="<%= user ? 'has-nav' : 'no-nav' %>">
 <% if (user) { %>
   <header class="topbar">
-    <button type="button" class="menu-toggle" aria-label="Thu gọn/mở menu" onclick="document.body.classList.toggle('nav-open')">&#9776;</button>
+    <button type="button" class="menu-toggle" aria-label="Thu gọn/mở menu">&#9776;</button>
     <span class="brand">Quản lý công tác chính trị</span>
     <span class="spacer"></span>
     <span class="who"><strong><%= user.full_name %></strong><% if (user.rank) { %> · <%= user.rank %><% } %></span>
