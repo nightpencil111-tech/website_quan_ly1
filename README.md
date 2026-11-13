@@ -73,7 +73,9 @@ npx playwright install chromium
 1. Mở PowerShell bằng quyền Administrator (chuột phải, "Run as administrator"), vào thư mục ứng dụng.
 2. Chạy: `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. Kịch bản tạo tác vụ `QuanLyCTV-Web` (chạy khi bật máy, tự chạy lại khi lỗi, nhật ký ở `logs\server.log`) và `QuanLyCTV-SaoLuu` (02:30 hằng ngày), mở cổng tường lửa nếu chạy nội bộ, rồi khởi động ngay. Chạy lại là cài đè.
 3. Gỡ: `powershell -ExecutionPolicy Bypass -File scripts\windows\uninstall.ps1`.
-4. Chạy tay không cài tác vụ: nhấp đúp `scripts\windows\start.cmd`.
+4. Chạy tay không cài tác vụ: nhấp đúp `scripts\windows\start.cmd`. Nếu tác vụ đang chạy, `start.cmd` sẽ báo lỗi `EADDRINUSE` (cổng đã bị chiếm): dừng tác vụ trước bằng `Stop-ScheduledTask QuanLyCTV-Web`.
+5. Tác vụ chạy qua `scripts\windows\run-server.cmd`: nếu máy chủ thoát vì lỗi thì chờ 60 giây rồi chạy lại. Ở chế độ Internet, nếu kiểm tra khởi động không đạt (ví dụ chưa đổi mật khẩu `admin`), máy chủ sẽ thử lại mỗi 60 giây và ghi lý do bằng tiếng Việt vào `logs\server.log` mỗi lần; sửa xong sẽ tự chạy. Nhật ký quá khoảng 10 MB được đổi thành `server.old.log`.
+6. Tường lửa: chỉ mở cổng khi `mode` là `noi_bo` hoặc `listenLan` là `true` trong `quanly.config.json`, và chỉ cho hồ sơ mạng Domain/Private (Wi-Fi công cộng không được mở). Biến môi trường không ảnh hưởng quyết định này.
 
 Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.config.json` rồi sửa (JSON không có chú thích): `mode` (`noi_bo` hoặc `internet`), `port`, `publicUrl`, `listenLan`, `backupDir` (thư mục sao lưu, để trống là `backups`). Chạy lại `install.ps1` sau khi đổi `port` hoặc `mode` để cập nhật tường lửa.
 
