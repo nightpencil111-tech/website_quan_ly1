@@ -26,6 +26,7 @@ const isActive = (h) => h === '/' ? path === '/' : path === h || path.startsWith
     <span class="brand">Quản lý công tác chính trị</span>
     <span class="spacer"></span>
     <span class="who"><strong><%= user.full_name %></strong><% if (user.rank) { %> · <%= user.rank %><% } %></span>
+    <a class="link-btn" href="/account/security">Bảo mật tài khoản</a>
     <a class="link-btn" href="/change-password">Đổi mật khẩu</a>
     <form method="post" action="/logout" class="inline">
       <input type="hidden" name="_csrf" value="<%= csrf %>">

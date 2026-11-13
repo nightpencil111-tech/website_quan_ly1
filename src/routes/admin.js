@@ -36,6 +36,8 @@ const AUDIT_ACTIONS = {
   soldier_thought_create: 'Thêm ghi nhận tư tưởng', soldier_thought_update: 'Sửa ghi nhận tư tưởng', soldier_thought_delete: 'Xóa ghi nhận tư tưởng',
   ai_run: 'Dùng trợ lý AI', ai_settings: 'Đổi cài đặt trợ lý AI',
   login_ip_blocked: 'Khóa thiết bị (IP) do đăng nhập sai nhiều lần',
+  totp_enable: 'Bật xác thực 2 lớp', totp_disable: 'Tắt xác thực 2 lớp', totp_reset: 'Đặt lại xác thực 2 lớp',
+  totp_recovery_regen: 'Tạo lại mã dự phòng 2 lớp', recovery_code_used: 'Đăng nhập bằng mã dự phòng 2 lớp',
 };
 
 module.exports = (db) => {
@@ -72,7 +74,10 @@ module.exports = (db) => {
   // ---- Tài khoản ----
   const listWithLinks = () => {
     const link = new Map(soldiers.listSoldiers(db, {}).filter((x) => x.user_id).map((x) => [x.user_id, x]));
-    return users.listUsers(db, { includeInactive: true }).map((u) => ({ ...u, soldier: link.get(u.id) || null }));
+    const totp = new Map(db.prepare('SELECT user_id, enabled FROM user_totp').all().map((x) => [x.user_id, x.enabled]));
+    return users.listUsers(db, { includeInactive: true }).map((u) => ({
+      ...u, soldier: link.get(u.id) || null, totp: totp.has(u.id) ? (totp.get(u.id) ? 'on' : 'setup') : null,
+    }));
   };
   const renderList = (req, res, extra = {}) => res.render('admin/users', {
     title: 'Quản trị tài khoản', tab: 'users', users: listWithLinks(),
@@ -136,6 +141,21 @@ module.exports = (db) => {
     title: 'Quản trị tài khoản', tab: 'users', users: listWithLinks(),
     roles: LABELS.role, party: users.PARTY, error: e.message,
   })));
+
+  // Đặt lại xác thực 2 lớp (người dùng mất điện thoại): xóa secret + mã dự phòng, hủy mọi phiên của tài khoản đó.
+  r.post('/admin/users/:id/totp-reset', loadTarget, (req, res) => {
+    db.exec('BEGIN');
+    try {
+      db.prepare('DELETE FROM user_totp WHERE user_id = ?').run(req.target.id);
+      db.prepare('DELETE FROM sessions WHERE user_id = ?').run(req.target.id);
+      audit.log(db, req.user.id, 'totp_reset', req.target.username, null);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    }
+    res.redirect('/admin/users');
+  });
 
   // ---- Đơn vị ----
   const renderUnits = (res, error, status = 200) =>

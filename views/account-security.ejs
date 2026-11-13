@@ -1,0 +1,33 @@
+<h1>Bảo mật tài khoản</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<div class="form-card">
+  <h2>Xác thực 2 lớp</h2>
+  <p>Trạng thái:
+    <% if (enabled) { %><span class="badge">Đã bật</span> · Còn <%= remaining %> mã dự phòng<% } else { %><span class="badge badge-off">Chưa bật</span><% } %>
+    <% if (required) { %> · <span class="muted">Bắt buộc với tài khoản của đồng chí khi hệ thống mở ra Internet</span><% } %>
+  </p>
+  <p class="muted">Xác thực 2 lớp: ngoài mật khẩu, mỗi lần đăng nhập đồng chí nhập thêm mã 6 số hiện trên ứng dụng Google Authenticator hoặc Microsoft Authenticator trong điện thoại.</p>
+  <% if (!enabled) { %>
+    <p><a class="btn btn-primary" href="/2fa/setup">Bật xác thực 2 lớp</a></p>
+  <% } else { %>
+    <% if (remaining <= 3) { %><div class="alert alert-error">Còn ít mã dự phòng, đồng chí nên tạo bộ mã mới.</div><% } %>
+    <form method="post" action="/account/security/recovery-codes" class="twofa-action">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <h3>Tạo lại mã dự phòng</h3>
+      <p class="muted">Bộ mã cũ sẽ hết hiệu lực. Nhập mã 6 số hiện tại trên điện thoại để xác nhận.</p>
+      <label>Mã 6 số <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+      <button type="submit" class="btn">Tạo 10 mã mới</button>
+    </form>
+    <% if (canDisable) { %>
+      <form method="post" action="/account/security/disable" class="twofa-action" data-confirm="Tắt xác thực 2 lớp? Tài khoản sẽ chỉ còn bảo vệ bằng mật khẩu.">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h3>Tắt xác thực 2 lớp</h3>
+        <p class="muted">Nhập mã 6 số hiện tại trên điện thoại để xác nhận.</p>
+        <label>Mã 6 số <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+        <button type="submit" class="btn">Tắt xác thực 2 lớp</button>
+      </form>
+    <% } else { %>
+      <p class="muted">Tài khoản chỉ huy/quản trị không tự tắt được xác thực 2 lớp khi hệ thống mở ra Internet. Đổi điện thoại hoặc mất điện thoại: dùng mã dự phòng để đăng nhập hoặc nhờ quản trị viên đặt lại.</p>
+    <% } %>
+  <% } %>
+</div>

@@ -1,0 +1,42 @@
+<div class="auth-card twofa-card">
+  <h1>Bật xác thực 2 lớp</h1>
+  <% if (forced) { %>
+    <div class="alert alert-info">Hệ thống đang mở ra Internet nên tài khoản của đồng chí bắt buộc dùng xác thực 2 lớp. Đồng chí làm theo các bước dưới đây (khoảng 2 phút) rồi mới vào được hệ thống.</div>
+  <% } else { %>
+    <p class="muted">Sau khi bật, mỗi lần đăng nhập đồng chí nhập thêm mã 6 số hiện trên điện thoại. Người lấy được mật khẩu cũng không vào được nếu không có điện thoại của đồng chí.</p>
+  <% } %>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+  <ol class="twofa-steps">
+    <li>
+      <strong>Cài ứng dụng tạo mã trên điện thoại</strong> (miễn phí): <em>Google Authenticator</em> hoặc <em>Microsoft Authenticator</em>.
+      Tìm trong CH Play (Android) hoặc App Store (iPhone). Nếu đã có thì bỏ qua bước này.
+    </li>
+    <li>
+      <strong>Thêm tài khoản vào ứng dụng</strong>:
+      <ul>
+        <li>Google Authenticator: bấm dấu <b>+</b> → <b>Quét mã QR</b>.</li>
+        <li>Microsoft Authenticator: bấm dấu <b>+</b> → <b>Tài khoản khác (Google, Facebook, v.v.)</b> → quét mã.</li>
+      </ul>
+      Đưa camera điện thoại vào mã QR này:
+      <div class="twofa-qr"><img src="<%= qr %>" alt="Mã QR để thêm tài khoản vào ứng dụng xác thực" width="220" height="220"></div>
+      Không quét được? Chọn <b>Nhập khóa thiết lập</b> (Google) hoặc <b>Nhập mã theo cách thủ công</b> (Microsoft), tên tài khoản gõ
+      <b><%= issuer %> (<%= account %>)</b>, khóa gõ (không cần dấu cách), chọn loại <b>Dựa trên thời gian</b>:
+      <div class="twofa-key"><code class="totp-key"><%= secretText %></code></div>
+    </li>
+    <li>
+      <strong>Nhập mã 6 số</strong> ứng dụng đang hiện cho mục <b><%= issuer %></b> (mã đổi sau mỗi 30 giây) để xác nhận:
+    </li>
+  </ol>
+
+  <form method="post" action="/2fa/setup">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label>Mã xác nhận 6 số
+      <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Xác nhận và bật</button>
+  </form>
+  <p class="muted twofa-foot">
+    <% if (forced) { %><a href="/logout">Hủy, quay lại trang đăng nhập</a><% } else { %><a href="/account/security">Quay lại Bảo mật tài khoản</a><% } %>
+  </p>
+</div>

@@ -1,0 +1,13 @@
+<div class="auth-card twofa-card">
+  <h1>Mã dự phòng</h1>
+  <div class="alert alert-info">Xác thực 2 lớp đã được bật. Dưới đây là <b>10 mã dự phòng</b>, dùng để đăng nhập khi mất hoặc quên điện thoại. Mỗi mã chỉ dùng được một lần. <b>Các mã chỉ hiện một lần này</b>, đồng chí chép ra giấy hoặc in ra và cất ở nơi an toàn (không lưu trong điện thoại).</div>
+  <ol class="twofa-codes">
+    <% codes.forEach(function (c) { %><li><code><%= c %></code></li><% }) %>
+  </ol>
+  <form method="post" action="/2fa/done">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <label class="check"><input type="checkbox" name="saved" value="1" required> Tôi đã lưu các mã này</label>
+    <button type="submit" class="btn btn-primary btn-block">Tiếp tục</button>
+  </form>
+</div>

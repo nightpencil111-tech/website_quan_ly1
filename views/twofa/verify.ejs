@@ -1,0 +1,24 @@
+<div class="auth-card twofa-card">
+  <h1>Xác thực 2 lớp</h1>
+  <p class="muted">Đồng chí mở ứng dụng <b>Google Authenticator</b> hoặc <b>Microsoft Authenticator</b> trên điện thoại, xem mã 6 số của mục <b>QuanLyCTV</b> và nhập vào đây.</p>
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="post" action="/2fa/verify">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label>Mã 6 số trên điện thoại
+      <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required <%= recoveryError ? '' : 'autofocus' %>>
+    </label>
+    <button type="submit" class="btn btn-primary btn-block">Xác nhận</button>
+  </form>
+  <details class="twofa-recovery" <%= recoveryError ? 'open' : '' %>>
+    <summary>Dùng mã dự phòng (khi không có điện thoại)</summary>
+    <% if (recoveryError) { %><div class="alert alert-error"><%= recoveryError %></div><% } %>
+    <form method="post" action="/2fa/recovery">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label>Mã dự phòng (dạng ABCD-EFGH, mỗi mã chỉ dùng được một lần)
+        <input type="text" name="recovery_code" autocomplete="off" maxlength="12" required>
+      </label>
+      <button type="submit" class="btn btn-block">Đăng nhập bằng mã dự phòng</button>
+    </form>
+  </details>
+  <p class="muted twofa-foot">Mất điện thoại và hết mã dự phòng? Đồng chí báo quản trị viên đặt lại xác thực 2 lớp. · <a href="/logout">Quay lại trang đăng nhập</a></p>
+</div>

@@ -8,7 +8,8 @@ module.exports = (db) => {
 
   r.get('/login', (req, res) => {
     if (req.user) return res.redirect('/');
-    res.render('login', { title: 'Đăng nhập', error: null, username: '' });
+    const error = req.query.sai_ma ? 'Nhập sai mã xác thực quá 5 lần, đồng chí đăng nhập lại' : null;
+    res.render('login', { title: 'Đăng nhập', error, username: '' });
   });
 
   r.post('/login', (req, res) => {
@@ -19,7 +20,7 @@ module.exports = (db) => {
     if (limiter && limiter.check(ip).blocked) {
       return res.status(429).render('login', { title: 'Đăng nhập', error: IP_BLOCK_MESSAGE, username: username || '' });
     }
-    const result = auth.login(db, username, password);
+    const result = auth.login(db, username, password, { config: req.app.locals.config, now: req.app.locals.now });
     if (!result.ok) {
       if (limiter && limiter.fail(ip).justBlocked) {
         audit.log(db, null, 'login_ip_blocked', ip, `Sai mật khẩu ${IP_MAX_FAILS} lần trong 15 phút, khóa thiết bị 15 phút`);
@@ -28,6 +29,8 @@ module.exports = (db) => {
       return res.status(200).render('login', { title: 'Đăng nhập', error: result.error, username: username || '' });
     }
     auth.setSessionCookie(res, result.sessionId);
+    // Chế độ Internet: 2 lớp trước, đổi mật khẩu bắt buộc sau (mật khẩu mặc định bị lộ chưa đủ để vào hệ thống).
+    if (result.mfa) return res.redirect(`/2fa/${result.mfa}`);
     res.redirect(result.mustChangePassword ? '/change-password' : '/');
   });
 

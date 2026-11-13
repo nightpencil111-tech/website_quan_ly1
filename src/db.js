@@ -216,6 +216,19 @@ const MIGRATIONS = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
   `,
+  `
+  CREATE TABLE user_totp (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    secret_enc TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0,1)),
+    recovery_hashes TEXT NOT NULL DEFAULT '[]',
+    last_step INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  ALTER TABLE sessions ADD COLUMN mfa_pending TEXT CHECK (mfa_pending IS NULL OR mfa_pending IN ('setup','verify'));
+  ALTER TABLE sessions ADD COLUMN mfa_deadline INTEGER;
+  ALTER TABLE sessions ADD COLUMN mfa_fails INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 // Migration đánh số phiên bản; schema_version giữ một dòng cho mỗi phiên bản đã áp dụng.

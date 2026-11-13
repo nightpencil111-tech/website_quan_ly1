@@ -188,3 +188,21 @@ tr.level-dac_biet td { background: #fbeaea; }
 .ai-bar .inline-form { margin-bottom: 6px; }
 .ai-bar select, .ai-bar input { width: auto !important; display: inline-block !important; margin-top: 0 !important; }
 .ai-compose textarea { min-height: 200px; }
+
+/* Xác thực 2 lớp */
+.twofa-card { max-width: 560px; }
+.twofa-steps { padding-left: 20px; line-height: 1.55; }
+.twofa-steps li { margin-bottom: 12px; }
+.twofa-steps ul { padding-left: 18px; margin: 4px 0; }
+.twofa-qr { margin: 10px 0; }
+.twofa-qr img { display: block; width: 220px; height: 220px; border: 1px solid var(--border); background: #fff; }
+.twofa-key { margin: 8px 0; }
+.totp-key { display: inline-block; padding: 6px 10px; background: #f4f6f0; border: 1px solid var(--border); border-radius: 4px; font-size: 17px; letter-spacing: 1px; word-break: break-all; }
+.twofa-codes { columns: 2; padding-left: 28px; font-size: 17px; line-height: 1.9; }
+.twofa-codes code { letter-spacing: 1px; }
+.auth-card label.check { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.auth-card label.check input { display: inline-block; width: auto; margin: 0; }
+.twofa-recovery { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+.twofa-recovery summary { cursor: pointer; color: var(--green-dark); font-weight: 600; margin-bottom: 10px; }
+.twofa-foot { margin-top: 16px; }
+.twofa-action { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 8px; }

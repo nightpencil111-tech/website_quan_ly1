@@ -14,6 +14,11 @@ function createApp({ dbPath, config, now } = {}) {
   app.disable('x-powered-by');
   app.locals.config = config;
   app.locals.ipLimiter = createIpLimiter(now ? { now } : {});
+  app.locals.now = now || Date.now;
+  // Khóa mã hóa secret 2 lớp: <thư mục CSDL>/secret.key (CSDL trong bộ nhớ → khóa tạm).
+  app.locals.totpKey = dbPath && dbPath !== ':memory:'
+    ? require('./services/totp').loadKey(path.dirname(path.resolve(dbPath)))
+    : require('node:crypto').randomBytes(32);
   // Chế độ Internet: Tailscale Funnel chuyển tiếp từ 127.0.0.1 → chỉ tin X-Forwarded-For từ localhost.
   // Chế độ nội bộ: không tin proxy nào (req.ip = địa chỉ kết nối thật).
   app.set('trust proxy', config.mode === 'internet' ? 'loopback' : false);
@@ -53,6 +58,7 @@ function createApp({ dbPath, config, now } = {}) {
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
   app.use(auth.loadSession(db));
+  app.use(auth.mfaGate);
   app.use((req, res, next) => {
     res.locals.path = req.path;
     res.locals.flash = null;
@@ -62,6 +68,7 @@ function createApp({ dbPath, config, now } = {}) {
   app.use(auth.csrfCheck);
 
   app.use(require('./routes/auth')(db));
+  app.use(require('./routes/twofa')(db));
   app.use(require('./routes/dashboard')(db));
   app.use(require('./routes/people')(db));
   app.use(require('./routes/tasks')(db));

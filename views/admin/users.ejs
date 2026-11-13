@@ -16,7 +16,7 @@
       <td><%= roles[u.role] %></td>
       <td><%= party[u.party_status] %></td>
       <td><%= u.open_tasks %></td>
-      <td><% if (u.active) { %>Hoạt động<% } else { %><span class="badge badge-off">Đã khóa</span><% } %><% if (u.must_change_password) { %> <span class="badge">Chờ đổi mật khẩu</span><% } %></td>
+      <td><% if (u.active) { %>Hoạt động<% } else { %><span class="badge badge-off">Đã khóa</span><% } %><% if (u.must_change_password) { %> <span class="badge">Chờ đổi mật khẩu</span><% } %><% if (u.totp === 'on') { %> <span class="badge">Đã bật 2 lớp</span><% } %></td>
       <td class="actions">
         <a class="btn" href="/admin/users/<%= u.id %>/edit">Sửa</a>
         <form method="post" action="/admin/users/<%= u.id %>/active" class="inline">
@@ -28,6 +28,12 @@
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <button type="submit" class="btn">Đặt lại mật khẩu</button>
         </form>
+        <% if (u.totp) { %>
+        <form method="post" action="/admin/users/<%= u.id %>/totp-reset" class="inline" data-confirm="Đặt lại xác thực 2 lớp cho tài khoản này? Người dùng sẽ bị đăng xuất và phải bật lại 2 lớp (với điện thoại mới) ở lần đăng nhập sau.">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit" class="btn">Đặt lại xác thực 2 lớp</button>
+        </form>
+        <% } %>
       </td>
     </tr>
   <% }) %>
