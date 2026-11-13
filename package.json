@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node --no-warnings=ExperimentalWarning src/server.js",
     "test": "node --no-warnings=ExperimentalWarning --test \"test/*.test.js\"",
+    "backup": "node --no-warnings=ExperimentalWarning scripts/backup.js",
     "demo": "node --no-warnings=ExperimentalWarning scripts/demo-data.js",
     "screenshots": "node --no-warnings=ExperimentalWarning scripts/screenshots.js"
   },

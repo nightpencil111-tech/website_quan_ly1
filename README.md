@@ -61,14 +61,21 @@ npx playwright install chromium
 
 ## 5. Sao lưu và khôi phục
 
-- **Sao lưu:** đăng nhập bằng `admin`, vào **Sao lưu dữ liệu** và bấm tải về; hoặc dừng ứng dụng (Ctrl+C) rồi chép tệp `data/data.db` (kèm `data.db-wal`, `data.db-shm` nếu có).
-- **Khôi phục:** (1) dừng ứng dụng (Ctrl+C); (2) xóa `data/data.db-wal` và `data/data.db-shm` nếu có; (3) đổi tên bản sao lưu tải về (dạng `saoluu-YYYY-MM-DD.db`) thành `data.db` và chép đè vào thư mục `data/`; (4) khởi động lại ứng dụng. Không bỏ qua bước 2, nếu không dữ liệu cũ có thể bị trộn lẫn hoặc báo hỏng.
+- **Sao lưu:** đăng nhập bằng `admin`, vào **Sao lưu dữ liệu** và bấm tải về. Nếu hệ thống đã có khóa xác thực 2 lớp (`data/secret.key`), tệp tải về là `saoluu-YYYY-MM-DD.zip` chứa `data.db` và `secret.key`; nếu không, là tệp `.db`. Cũng có thể chạy `npm run backup` (hoặc `scripts\windows\backup.cmd`): tạo `backups/saoluu-YYYY-MM-DD-HHmm.db` kèm `.key` cùng tên, giữ 30 bản mới nhất; đổi thư mục bằng `backupDir` trong `quanly.config.json` hoặc biến `QLCTV_BACKUP_DIR`.
+- **Khôi phục:** (1) dừng ứng dụng (Ctrl+C); (2) xóa `data/data.db-wal` và `data/data.db-shm` nếu có; (3) chép bản sao lưu đè thành `data/data.db` (giải nén nếu là `.zip`; với bản `saoluu-...-HHmm.db` thì đổi tên thành `data.db`), **đồng thời chép khóa `secret.key` (hoặc `saoluu-...-HHmm.key` đổi tên thành `secret.key`) vào cùng thư mục `data/`**, nếu thiếu khóa thì mọi tài khoản đã bật 2 lớp không đăng nhập được; (4) khởi động lại ứng dụng. Không bỏ qua bước 2, nếu không dữ liệu cũ có thể bị trộn lẫn hoặc báo hỏng.
 - Ứng dụng luôn dùng `data/data.db` nằm cạnh thư mục ứng dụng, dù khởi động từ thư mục nào (có thể đổi bằng biến `DB_PATH`). Dừng bằng Ctrl+C để dữ liệu được ghi gọn.
 - Bản sao lưu chứa cả mật khẩu đã băm của mọi tài khoản: cất giữ ở nơi an toàn, không gửi qua kênh không được phép.
 
-## 6. Tự chạy khi bật máy (tùy chọn)
+## 6. Tự chạy khi bật máy và tự sao lưu (Windows)
 
-Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:\QuanLyCTV && npm start`, rồi đặt lối tắt của tệp vào thư mục khởi động (`Win + R`, gõ `shell:startup`). Hoặc dùng Task Scheduler với trình kích hoạt "At startup".
+**Lưu ý:** các kịch bản dưới đây chưa được nhà phát triển chạy thử trên Windows (chỉ rà soát kỹ bằng mắt); đồng chí chạy thử và báo lại nếu có lỗi.
+
+1. Mở PowerShell bằng quyền Administrator (chuột phải, "Run as administrator"), vào thư mục ứng dụng.
+2. Chạy: `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. Kịch bản tạo tác vụ `QuanLyCTV-Web` (chạy khi bật máy, tự chạy lại khi lỗi, nhật ký ở `logs\server.log`) và `QuanLyCTV-SaoLuu` (02:30 hằng ngày), mở cổng tường lửa nếu chạy nội bộ, rồi khởi động ngay. Chạy lại là cài đè.
+3. Gỡ: `powershell -ExecutionPolicy Bypass -File scripts\windows\uninstall.ps1`.
+4. Chạy tay không cài tác vụ: nhấp đúp `scripts\windows\start.cmd`.
+
+Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.config.json` rồi sửa (JSON không có chú thích): `mode` (`noi_bo` hoặc `internet`), `port`, `publicUrl`, `listenLan`, `backupDir` (thư mục sao lưu, để trống là `backups`). Chạy lại `install.ps1` sau khi đổi `port` hoặc `mode` để cập nhật tường lửa.
 
 ## 7. Lưu ý bảo mật
 

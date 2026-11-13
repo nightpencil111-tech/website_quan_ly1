@@ -67,15 +67,30 @@ test('admin: danh sách, tạo tài khoản hiện mật khẩu tạm, khóa, đ
   } finally { await s.close(); }
 });
 
-test('admin: sao lưu trả file tải về', async () => {
+test('admin: sao lưu có secret.key thì tải về .zip gồm data.db và secret.key', async () => {
   const s = await boot();
   try {
     const adm = await loginAs(s.base, 'admin', 'admin123');
     const r = await get(s, adm, '/admin/backup');
     assert.equal(r.status, 200);
+    assert.equal(r.headers.get('content-type'), 'application/zip');
+    assert.match(r.headers.get('content-disposition'), /attachment; filename="saoluu-\d{4}-\d{2}-\d{2}\.zip"/);
+    const zip = new (require('pizzip'))(Buffer.from(await r.arrayBuffer()));
+    assert.equal(zip.file('data.db').asNodeBuffer().subarray(0, 15).toString(), 'SQLite format 3');
+    assert.equal(zip.file('secret.key').asNodeBuffer().length, 32);
+  } finally { await s.close(); }
+});
+
+test('admin: sao lưu không có secret.key thì tải về .db như cũ', async () => {
+  const s = await boot();
+  try {
+    const dbFile = s.db.prepare('PRAGMA database_list').get().file;
+    require('node:fs').rmSync(require('node:path').join(require('node:path').dirname(dbFile), 'secret.key'));
+    const adm = await loginAs(s.base, 'admin', 'admin123');
+    const r = await get(s, adm, '/admin/backup');
+    assert.equal(r.status, 200);
     assert.equal(r.headers.get('content-type'), 'application/octet-stream');
     assert.match(r.headers.get('content-disposition'), /attachment; filename="saoluu-\d{4}-\d{2}-\d{2}\.db"/);
-    const buf = Buffer.from(await r.arrayBuffer());
-    assert.equal(buf.subarray(0, 15).toString(), 'SQLite format 3');
+    assert.equal(Buffer.from(await r.arrayBuffer()).subarray(0, 15).toString(), 'SQLite format 3');
   } finally { await s.close(); }
 });

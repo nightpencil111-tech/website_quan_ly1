@@ -4,3 +4,9 @@ screenshots/
 .superpowers/
 *.zip
 *.bundle
+
+backups/
+logs/
+quanly.config.json
+secret.key
+data/secret.key

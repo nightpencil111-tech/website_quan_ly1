@@ -278,11 +278,32 @@ module.exports = (db) => {
       return next(e);
     }
     audit.log(db, req.user.id, 'backup', null, 'Tải bản sao lưu CSDL');
-    res.set('Content-Type', 'application/octet-stream');
-    res.download(file, `saoluu-${today()}.db`, (err) => {
+    // Có secret.key (khóa giải mã 2 lớp) thì gói chung trong .zip để khôi phục không mất 2FA.
+    const dbFile = db.prepare('PRAGMA database_list').get().file;
+    const keyFile = dbFile ? path.join(path.dirname(dbFile), 'secret.key') : null;
+    const done = (err) => {
       cleanup();
       if (err && !res.headersSent) next(err);
-    });
+    };
+    if (keyFile && fs.existsSync(keyFile)) {
+      let buf;
+      try {
+        const PizZip = require('pizzip');
+        const zip = new PizZip();
+        zip.file('data.db', fs.readFileSync(file));
+        zip.file('secret.key', fs.readFileSync(keyFile));
+        buf = zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+      } catch (e) {
+        cleanup();
+        return next(e);
+      }
+      cleanup();
+      res.set('Content-Type', 'application/zip');
+      res.set('Content-Disposition', `attachment; filename="saoluu-${today()}.zip"`);
+      return res.send(buf);
+    }
+    res.set('Content-Type', 'application/octet-stream');
+    res.download(file, `saoluu-${today()}.db`, done);
   });
 
   return r;
