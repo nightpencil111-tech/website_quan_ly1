@@ -250,3 +250,53 @@ test('hai cụm trùng tên: mỗi cụm một nhóm radio, chọn xong chuyển
     assert.equal((await get(s, member, '/assistant/task/pick?pick_0=1')).status, 403);
   } finally { await s.close(); }
 });
+
+test('giao việc nhanh: mô tả = câu gốc; giao cho đơn vị có ghi chú; trang chọn người giữ cả hai', async () => {
+  const { s, ids } = await boot();
+  try {
+    s.db.prepare("INSERT INTO units (name) VALUES ('Trung đội 2')").run();
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const text = 'giao đ/c Bình làm báo cáo chi bộ ngày 25/12/2030 gấp';
+    let r = await post(s, m, '/assistant/task', { text });
+    let u = new URLSearchParams(r.headers.get('location').split('?')[1]);
+    assert.equal(u.get('description'), text);
+    let page = await (await get(s, m, r.headers.get('location'))).text();
+    assert.match(page, /<textarea name="description" rows="4">giao đ\/c Bình làm báo cáo chi bộ ngày 25\/12\/2030 gấp<\/textarea>/);
+
+    const unitText = 'giao cho Trung đội 2 sơn lại cổng';
+    r = await post(s, m, '/assistant/task', { text: unitText });
+    assert.equal(r.status, 302);
+    u = new URLSearchParams(r.headers.get('location').split('?')[1]);
+    assert.equal(u.get('title'), 'Sơn lại cổng');
+    assert.deepEqual(u.getAll('unit'), ['Trung đội 2']);
+    assert.deepEqual(u.getAll('assignee_ids'), []);
+    page = await (await get(s, m, r.headers.get('location'))).text();
+    assert.match(page, /Giao cho đơn vị: Trung đội 2 — đồng chí chọn người thực hiện/);
+    assert.doesNotMatch(page, /Không tìm thấy người/);
+
+    // Trang chọn người (tên trùng) chuyển tiếp mô tả và đơn vị.
+    r = await post(s, m, '/assistant/task', { text: 'giao đ/c An soạn kế hoạch, giao cho Trung đội 2 trực' });
+    assert.equal(r.status, 200);
+    const html = await r.text();
+    assert.match(html, /name="description" value="giao đ\/c An soạn kế hoạch, giao cho Trung đội 2 trực"/);
+    assert.match(html, /name="unit" value="Trung đội 2"/);
+    const loc = (await get(s, m, `/assistant/task/pick?title=X&pick_0=${ids.an1}&unit=Trung%20%C4%91%E1%BB%99i%202&description=c%C3%A2u%20g%E1%BB%91c`)).headers.get('location');
+    u = new URLSearchParams(loc.split('?')[1]);
+    assert.equal(u.get('description'), 'câu gốc');
+    assert.deepEqual(u.getAll('unit'), ['Trung đội 2']);
+    // Tên đơn vị lạ (ký tự đặc biệt) bị bỏ.
+    page = await (await get(s, m, '/tasks/new?title=X&unit=%3Cb%3Ex%3C%2Fb%3E')).text();
+    assert.doesNotMatch(page, /Giao cho đơn vị/);
+  } finally { await s.close(); }
+});
+
+test('thẻ Giao việc nhanh dùng tên có trong dữ liệu thử; ô Soạn thảo giới hạn 8000 ký tự', async () => {
+  const { s } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const html = await (await get(s, m, '/assistant?tab=giao-viec')).text();
+    assert.match(html, /placeholder="vd: giao đ\/c Bảo soạn báo cáo/);
+    const soan = await (await get(s, m, '/assistant?tab=soan-thao')).text();
+    assert.match(soan, /id="ai-input" rows="12" maxlength="8000"/);
+  } finally { await s.close(); }
+});

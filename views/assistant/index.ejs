@@ -8,7 +8,7 @@
 <form method="post" action="/assistant/task" class="form-card wide">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <label>Đồng chí nói việc cần giao như bình thường
-    <textarea name="text" rows="3" maxlength="1000" required placeholder="vd: giao đ/c Bình soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp"><%= taskText %></textarea></label>
+    <textarea name="text" rows="3" maxlength="1000" required placeholder="vd: giao đ/c Bảo soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp"><%= taskText %></textarea></label>
   <p class="muted">Trợ lý đọc ra tiêu đề, người thực hiện, hạn và mức ưu tiên rồi điền sẵn vào phiếu giao việc; đồng chí kiểm tra trước khi lưu.</p>
   <button type="submit" class="btn btn-primary">Phân tích và điền phiếu</button>
 </form>
@@ -33,7 +33,7 @@
     <button type="button" class="btn" id="ol-btn">Chèn dàn ý</button>
   </div>
   <label>Nội dung (dàn ý, yêu cầu hoặc văn bản cần xử lý)
-    <textarea id="ai-input" rows="12" maxlength="12000"></textarea></label>
+    <textarea id="ai-input" rows="12" maxlength="8000"></textarea></label>
   <% if (aiEnabled) { %>
   <div class="inline-form">
     <select id="ai-task" aria-label="Tác vụ AI">

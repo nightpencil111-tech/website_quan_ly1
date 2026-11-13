@@ -235,3 +235,39 @@ test('câu hỏi về tư tưởng/hoàn cảnh → từ chối với mọi vai 
     }
   }
 });
+
+test('việc quá hạn/đến hạn của <tên>: quản lý xem theo người; chiến sĩ chỉ của mình', () => {
+  const ctx = setup();
+  let r = ask(ctx, 'mgr', 'việc quá hạn của Hùng');
+  assert.equal(r.intent, 'viec_qua_han');
+  assert.equal(r.rows.length, 1);
+  assert.equal(r.rows[0].href, `/tasks/${ctx.t.qh1}`);
+  assert.equal(r.summary, 'Đồng chí Trần Văn Hùng có 1 việc quá hạn.');
+  r = ask(ctx, 'mgr', 'viec qua han cua dc Binh');
+  assert.equal(r.rows.length, 1);
+  assert.equal(r.rows[0].href, `/tasks/${ctx.t.qh2}`);
+  r = ask(ctx, 'mgr', 'việc đến hạn tuần này của Hùng');
+  assert.equal(r.intent, 'viec_den_han');
+  assert.equal(r.rows.length, 1);
+  assert.equal(r.rows[0].href, `/tasks/${ctx.t.today}`);
+  assert.match(r.summary, /Trần Văn Hùng/);
+  r = ask(ctx, 'mgr', 'việc quá hạn của An');
+  assert.equal(r.ambiguous, true);
+  assert.ok(r.rows.every((x) => !x.href));
+  r = ask(ctx, 'mgr', 'việc quá hạn của đ/c Zzz');
+  assert.equal(r.rows.length, 0);
+  assert.match(r.summary, /Không tìm thấy/);
+  // "của cả đơn vị" → như câu hỏi chung
+  r = ask(ctx, 'mgr', 'việc quá hạn của cả đơn vị');
+  assert.equal(r.rows.length, 3);
+  // chiến sĩ hỏi của chính mình → được; của người khác → từ chối
+  r = ask(ctx, 'hung', 'việc quá hạn của Hùng');
+  assert.ok(!r.denied);
+  assert.equal(r.rows.length, 1);
+  for (const q of ['việc quá hạn của Bình', 'việc đến hạn của Bình', 'việc quá hạn của An', 'việc quá hạn của Zzz']) {
+    r = ask(ctx, 'hung', q);
+    assert.equal(r.denied, true, q);
+    assert.deepEqual(r.rows, [], q);
+    assert.ok(!JSON.stringify(r).includes('Võ Văn Bình'), q);
+  }
+});

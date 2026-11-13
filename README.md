@@ -204,7 +204,7 @@ Mục **Trợ lý** (menu bên trái) gồm ba thẻ. Quản trị viên và Qu�
 - `Bảo và Cường dọn dẹp phòng truyền thống trước ngày 20/12`
 - `nhắc đồng chí Hải nộp danh sách đảng viên vào cuối tháng, hỏa tốc` (nếu có nhiều người tên Hải, trợ lý hỏi chọn đúng người)
 
-Trợ lý nhận ra: **người thực hiện** (theo họ tên, tên gọi hoặc hai từ cuối; nhiều người nối bằng "và", "cùng", dấu phẩy), **hạn** (ngày cụ thể như `20/12`, hôm nay, ngày mai, thứ trong tuần này/tuần sau, cuối tuần, cuối tháng, sau N ngày...), **mức ưu tiên** (thường, gấp, hỏa tốc) và **lĩnh vực** (theo từ khóa trong câu). Phần còn lại thành tiêu đề. Nếu một tên trùng nhiều người, trợ lý hiện trang **Chọn đúng người**; tên không tìm thấy được ghi chú trên phiếu.
+Trợ lý nhận ra: **người thực hiện** (sau "đ/c", "đồng chí", "giao", "giao cho"; theo họ tên, tên gọi hoặc hai từ cuối; nhiều người nối bằng "và", "cùng", dấu phẩy; tên đứng ngay đầu câu không có "đ/c" chỉ được nhận khi có từ hai người trở lên, viết hoa, như ví dụ thứ hai; "giao cho Trung đội 2 …" được hiểu là giao cho đơn vị, đồng chí tự chọn người), **hạn** (ngày cụ thể như `20/12` hoặc `ngày 20-12`, hôm nay, ngày mai, thứ trong tuần này/tuần sau, cuối tuần, cuối tháng, trong N ngày, sau N ngày...), **mức ưu tiên** (thường, gấp, hỏa tốc) và **lĩnh vực** (theo từ khóa trong câu). Phần còn lại thành tiêu đề; câu gốc được ghi vào ô **Nội dung** của phiếu để đồng chí đối chiếu. Nếu một tên trùng nhiều người, trợ lý hiện trang **Chọn đúng người**; tên không tìm thấy được ghi chú trên phiếu.
 
 Kết quả được **điền sẵn vào phiếu giao việc**; đồng chí **luôn đọc lại và sửa trước khi bấm Lưu**, trợ lý không tự giao việc.
 
@@ -221,7 +221,7 @@ Chiến sĩ chỉ hỏi được về việc của chính mình. **Trợ lý kh�
 
 ### Dàn ý
 
-Ở thẻ **Soạn thảo** (và ngay trong form tạo văn bản), chọn loại rồi bấm **Chèn dàn ý** để có khung văn bản có sẵn: **Kế hoạch**, **Báo cáo**, **Báo cáo tuần**, **Biên bản sinh hoạt** (báo cáo tuần và biên bản tự lấy số liệu việc/quân số trong ứng dụng); có thể nhập chủ đề. Nếu ô đã có chữ, hệ thống hỏi trước khi thay.
+Ở thẻ **Soạn thảo** (và ngay trong form tạo văn bản), chọn loại rồi bấm **Chèn dàn ý** để có khung văn bản có sẵn: **Kế hoạch**, **Báo cáo**, **Báo cáo tuần**, **Biên bản sinh hoạt** (báo cáo tuần tự lấy số liệu công việc trong tuần từ ứng dụng; kế hoạch, báo cáo và biên bản là khung mục để đồng chí điền); có thể nhập chủ đề. Nếu ô đã có chữ, hệ thống hỏi trước khi thay.
 
 ### Trợ lý AI (tùy chọn)
 

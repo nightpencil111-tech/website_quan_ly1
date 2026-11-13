@@ -13,6 +13,10 @@
 //  - So khớp: đủ họ tên > tên gọi (từ cuối) > 2 từ cuối. Nhiều ứng viên → ambiguous (không tự chọn).
 //  - Nối người bằng "và", "cùng", "với", dấu phẩy; sau từ nối phải là từ dẫn hoặc tên khớp được.
 //  - Ứng viên: người dùng đang hoạt động, vai trò member/manager (như gợi ý người thực hiện).
+//  - Tên trần ở đầu câu (không có từ dẫn) chỉ nhận khi có ≥ 2 tên nối bằng "và"/"," và mọi từ tên đều
+//    viết hoa — một tên đơn lẻ không bao giờ được coi là người ("Bảo đảm…", "An toàn…", "Phong trào…").
+//  - "giao cho"/"giao" + tên đơn vị (có trong danh sách đơn vị, hoặc dạng "tiểu đội/trung đội/đại đội N")
+//    → ghi nhận đơn vị, không coi là người; người thực hiện để trống cho cán bộ chọn.
 const { fold } = require('../../util/text');
 const { AppError } = require('../../util/errors');
 const { resolveDatePhrase, foldAligned, normalizeText, origMatches } = require('./dateWords');
@@ -76,6 +80,15 @@ function detectCategory(orig, folded) {
   return best ? best.key : 'khac';
 }
 
+// Tên đơn vị (đã bỏ dấu, tách từ) để nhận "giao cho Trung đội 2 ...".
+function loadUnitWords(db) {
+  return db.prepare('SELECT name FROM units').all()
+    .map((u) => fold(u.name).split(/\s+/).filter(Boolean))
+    .filter((w) => w.length)
+    .sort((a, b) => b.length - a.length);
+}
+const UNIT_KIND = new Set(['tieu doi', 'trung doi', 'dai doi', 'tieu doan', 'khau doi']);
+
 function loadCandidates(db) {
   return db.prepare(
     `SELECT u.id, u.full_name, un.name AS unit_name FROM users u
@@ -128,11 +141,25 @@ function triggerAt(orig, folded, toks, i) {
 const isWord = (tok) => tok && /^[a-z0-9]+$/.test(tok.t);
 const SEPARATORS = new Set([',', 'va', 'cung', 'voi']);
 
-function parsePeople(orig, folded, cands, blocked) {
+function parsePeople(orig, folded, cands, blocked, unitWords = []) {
   const nameTokens = new Set(cands.flatMap((c) => c.words));
   const toks = tokenize(folded).filter((t) => !blocked(t.start, t.end));
   const persons = [];
   const spans = [];
+  const units = [];
+
+  // Số token của tên đơn vị bắt đầu ở token i (0 = không phải đơn vị).
+  const unitAt = (i) => {
+    const seqOk = (ws) => ws.every((w, k) => toks[i + k] && toks[i + k].t === w
+      && (k === 0 || toks[i + k].start === toks[i + k - 1].end + 1));
+    for (const ws of unitWords) if (seqOk(ws)) return ws.length;
+    const a = toks[i];
+    const b = toks[i + 1];
+    const c = toks[i + 2];
+    if (a && b && c && UNIT_KIND.has(`${a.t} ${b.t}`) && /^\d+$/.test(c.t)) return 3;
+    return 0;
+  };
+  const isCap = (w) => { const ch = orig[w.start]; return ch !== ch.toLowerCase(); };
 
   // Đọc một cụm tên bắt đầu ở token i. Trả về {person, next} hoặc null.
   const readName = (i, required) => {
@@ -172,14 +199,14 @@ function parsePeople(orig, folded, cands, blocked) {
         const own = c.full_name.toLowerCase().split(/\s+/);
         return spoken.every((w) => own.includes(w));
       });
-      if (!found.length) return null;
+      if (!found.length || !r.person.words.every(isCap)) return null;
       list.push({ words: r.person.words, found });
       lastEnd = r.next;
       j = r.next;
       const sep = toks[j];
       if (sep && (sep.t === 'va' || sep.t === ',')) j += 1; else break;
     }
-    if (!list.length || lastEnd !== j) return null; // kết thúc bằng từ nối thì không nhận
+    if (list.length < 2 || lastEnd !== j) return null; // một tên đơn lẻ hoặc kết thúc bằng từ nối thì không nhận
     const next = toks[j];
     if (!next || !isWord(next) || SEPARATORS.has(next.t)) return null;
     return { list, next: lastEnd };
@@ -194,6 +221,18 @@ function parsePeople(orig, folded, cands, blocked) {
   while (i < toks.length) {
     const trg = triggerAt(orig, folded, toks, i);
     if (!trg) { i += 1; continue; }
+    // "giao cho Trung đội 2 ..." → đơn vị, không phải người.
+    if (toks[i].t === 'giao') {
+      const n = unitAt(i + trg.len);
+      if (n) {
+        const first = toks[i + trg.len];
+        const last = toks[i + trg.len + n - 1];
+        units.push(orig.slice(first.start, last.end));
+        spans.push({ start: toks[i].start, end: last.end });
+        i += trg.len + n;
+        continue;
+      }
+    }
     // Chuỗi người: [từ dẫn] tên (nối [từ dẫn] tên)*
     const chainStart = toks[i].start;
     let chainEnd = null;
@@ -227,7 +266,7 @@ function parsePeople(orig, folded, cands, blocked) {
       i += 1;
     }
   }
-  return { persons, spans };
+  return { persons, spans, units };
 }
 
 function buildTitle(orig, spans, hadPerson) {
@@ -263,7 +302,7 @@ function parseTaskSentence(db, text, today) {
   for (const s of pr.spans) if (!blocked(s.start, s.end)) removed.push(s);
 
   const cands = loadCandidates(db);
-  const people = parsePeople(orig, folded, cands, blocked);
+  const people = parsePeople(orig, folded, cands, blocked, loadUnitWords(db));
   removed.push(...people.spans);
 
   const assignees = [];
@@ -286,10 +325,11 @@ function parseTaskSentence(db, text, today) {
       notes.push(`Không tìm thấy người tên '${phrase}' (có thể đã bị khóa hoặc chưa có tài khoản).`);
     }
   }
-  if (!people.persons.length) notes.push('Chưa xác định người thực hiện — đồng chí chọn trong biểu mẫu.');
+  for (const u of people.units) notes.push(`Giao cho đơn vị: ${u} — đồng chí chọn người thực hiện`);
+  if (!people.persons.length && !people.units.length) notes.push('Chưa xác định người thực hiện — đồng chí chọn trong biểu mẫu.');
   if (!due) notes.push('Chưa xác định hạn hoàn thành.');
 
-  const title = buildTitle(orig, removed, people.spans.length > 0);
+  const title = buildTitle(orig, removed, people.persons.length > 0);
   if (!/[\p{L}\p{N}]/u.test(title)) throw new AppError('Chưa có nội dung công việc');
 
   return {
@@ -297,6 +337,7 @@ function parseTaskSentence(db, text, today) {
     assignees,
     ambiguous,
     unmatched,
+    units: people.units,
     due_date: due ? due.date : null,
     due_phrase: due ? due.phrase : null,
     priority: pr.priority,

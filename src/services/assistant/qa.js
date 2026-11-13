@@ -49,15 +49,41 @@ function res(intent, summary, rows, extra = {}) {
   return { intent, summary, rows, ...extra };
 }
 
+// "... của <tên>" trong câu hỏi việc quá hạn/đến hạn → giới hạn theo một người.
+// Trả về null (không nói tên → như câu hỏi chung), {person} hoặc {answer} (không tìm thấy/trùng tên/từ chối).
+// Chiến sĩ chỉ được hỏi về chính mình; mọi trường hợp khác đều bị từ chối (không lộ tên người khác).
+function personScope(intent, { db, user, who: rest }) {
+  if (!rest || /^(ca|toan|don vi|dai doi|trung doi|tieu doi|tieu doan|cac|moi)\b/.test(rest)) return null;
+  const { phrase, found } = findPersonByText(db, rest);
+  const one = found.length === 1 ? found[0] : null;
+  if (!isMgr(user)) {
+    if (one && one.id === user.id) return { person: one };
+    return { answer: { intent, denied: true, summary: DENIED, rows: [] } };
+  }
+  if (one) return { person: one };
+  if (!found.length) {
+    return { answer: res(intent, `Không tìm thấy đồng chí${phrase ? ` tên '${phrase}'` : ''}.`, [], { columns: TASK_COLS }) };
+  }
+  const names = found.map((c) => `${c.full_name}${c.unit_name ? ` (${c.unit_name})` : ''}`).join('; ');
+  return { answer: res(intent, `Có ${found.length} đồng chí tên '${phrase}', đồng chí nói rõ họ tên: ${names}.`,
+    found.map((c) => ({ cells: [c.full_name, c.unit_name || '—'] })), { columns: ['Họ tên', 'Đơn vị'], ambiguous: true }) };
+}
+
 // ---- Truy vấn ----
-function qViecQuaHan({ db, user, today, mine }) {
+function qViecQuaHan(ctx) {
+  const { db, user, today, mine } = ctx;
+  const ps = mine ? null : personScope('viec_qua_han', ctx);
+  if (ps && ps.answer) return ps.answer;
   const filters = { overdue: true };
-  const own = mine || !isMgr(user);
+  const own = !ps && (mine || !isMgr(user));
   if (own) filters.assignee_id = user.id;
+  if (ps) filters.assignee_id = ps.person.id;
   const list = tasksSvc.listTasks(db, filters, today);
   const n = list.length;
-  return res('viec_qua_han', n ? `Có ${n} việc quá hạn${own ? ' của đồng chí' : ''}.` : 'Không có việc nào quá hạn.',
-    list.map(taskRow), { columns: TASK_COLS, empty_text: 'Không có việc nào quá hạn.' });
+  const empty = ps ? `Đồng chí ${ps.person.full_name} không có việc nào quá hạn.` : 'Không có việc nào quá hạn.';
+  const summary = !n ? empty
+    : ps ? `Đồng chí ${ps.person.full_name} có ${n} việc quá hạn.` : `Có ${n} việc quá hạn${own ? ' của đồng chí' : ''}.`;
+  return res('viec_qua_han', summary, list.map(taskRow), { columns: TASK_COLS, empty_text: empty });
 }
 
 function qViecCuaToi({ db, user, today }) {
@@ -67,15 +93,20 @@ function qViecCuaToi({ db, user, today }) {
     list.map(taskRow), { columns: TASK_COLS, empty_text: 'Đồng chí không có việc nào chưa hoàn thành.' });
 }
 
-function qViecDenHan({ db, user, today, f, mine }) {
+function qViecDenHan(ctx) {
+  const { db, user, today, f, mine } = ctx;
+  const ps = mine ? null : personScope('viec_den_han', ctx);
+  if (ps && ps.answer) return ps.answer;
   const sc = parseScope(f, today);
   const filters = { from: sc.from, to: sc.to };
-  const own = mine || !isMgr(user);
-  if (own) filters.assignee_id = user.id;
+  if (!ps && (mine || !isMgr(user))) filters.assignee_id = user.id;
+  if (ps) filters.assignee_id = ps.person.id;
   const list = open(tasksSvc.listTasks(db, filters, today));
   const n = list.length;
-  return res('viec_den_han', n ? `Có ${n} việc đến hạn ${sc.label}.` : `Không có việc nào đến hạn ${sc.label}.`,
-    list.map(taskRow), { columns: TASK_COLS, empty_text: `Không có việc nào đến hạn ${sc.label}.` });
+  const pre = ps ? `Đồng chí ${ps.person.full_name} ` : '';
+  const empty = ps ? `${pre}không có việc nào đến hạn ${sc.label}.` : `Không có việc nào đến hạn ${sc.label}.`;
+  return res('viec_den_han', n ? (ps ? `${pre}có ${n} việc đến hạn ${sc.label}.` : `Có ${n} việc đến hạn ${sc.label}.`) : empty,
+    list.map(taskRow), { columns: TASK_COLS, empty_text: empty });
 }
 
 function qViecCua({ db, today, rest }) {
@@ -282,7 +313,8 @@ function answer(db, user, text, today) {
   }
   const m = /\b(?:viec|nhiem vu) cua (.+)$/.exec(f);
   const mine = /\bcua (toi|minh)\b/.test(f);
-  return intent.run({ db, user, today, f, rest: m ? m[1] : '', mine });
+  const w = /\bcua (?!toi\b|minh\b|em\b)(.+)$/.exec(f);
+  return intent.run({ db, user, today, f, rest: m ? m[1] : '', who: w ? w[1] : '', mine });
 }
 
 module.exports = { INTENTS, answer, suggestions };

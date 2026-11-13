@@ -73,3 +73,14 @@ test('phrase là đoạn gốc (kèm từ "hạn") để loại khỏi tiêu đ�
   assert.equal(r2.phrase, 'xong trước ngày 20/12');
   assert.equal(r2.date, '2026-12-20');
 });
+
+test('dấu gạch: "2-3 lần" không phải ngày; "ngày 20-12" vẫn là ngày; "sau N ngày"', () => {
+  assert.equal(d('họp 2-3 lần mỗi tuần'), null);
+  assert.equal(d('chia 4-5 tổ'), null);
+  assert.equal(d('xong ngày 20-12'), '2026-12-20');
+  assert.equal(d('ngày 20-12-2027'), '2027-12-20');
+  assert.equal(d('hạn 20/12'), '2026-12-20');
+  assert.equal(d('nộp sau 3 ngày'), '2026-11-16');
+  assert.equal(d('sau 20 ngày nữa'), '2026-12-03');
+  assert.equal(resolveDatePhrase('nộp sau 3 ngày', FRI).phrase, 'sau 3 ngày');
+});

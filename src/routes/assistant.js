@@ -6,7 +6,7 @@ const { parseTaskSentence } = require('../services/assistant/taskParser');
 const qa = require('../services/assistant/qa');
 const outlines = require('../services/assistant/outlines');
 const ai = require('../services/assistant/ai');
-const { cleanNames } = require('../util/names');
+const { cleanNames, cleanUnits } = require('../util/names');
 
 const MANAGERS = ['admin', 'manager'];
 const isManager = (u) => MANAGERS.includes(u.role);
@@ -53,18 +53,20 @@ module.exports = (db) => {
   const prefillQuery = (draft, assigneeIds, unmatched) => {
     const p = new URLSearchParams();
     p.set('title', draft.title);
+    if (draft.description) p.set('description', draft.description); // mô tả = câu gốc
     if (draft.priority) p.set('priority', draft.priority);
     if (draft.category) p.set('category', draft.category);
     if (draft.due_date) p.set('due_date', draft.due_date);
     for (const id of assigneeIds) p.append('assignee_ids', String(id));
     for (const n of cleanNames(unmatched)) p.append('unmatched', n);
+    for (const u of cleanUnits(draft.units)) p.append('unit', u);
     return p;
   };
 
   r.post('/assistant/task', requireRole(...MANAGERS), (req, res, next) => {
     const text = str(req.body.text, MAX_TASK_TEXT);
     try {
-      const draft = parseTaskSentence(db, text, today());
+      const draft = { ...parseTaskSentence(db, text, today()), description: text };
       const ids = draft.assignees.map((a) => a.id);
       if (draft.ambiguous.length) {
         return res.render('assistant/task-result', {
@@ -86,6 +88,7 @@ module.exports = (db) => {
     for (let i = 0; i < 20; i += 1) add(req.query[`pick_${i}`]);
     const draft = {
       title: str(req.query.title, 200), priority: str(req.query.priority, 20), category: str(req.query.category, 20), due_date: str(req.query.due_date, 10),
+      description: str(req.query.description, MAX_TASK_TEXT), units: req.query.unit,
     };
     res.redirect('/tasks/new?' + prefillQuery(draft, ids, req.query.unmatched).toString());
   });

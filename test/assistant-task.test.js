@@ -166,3 +166,38 @@ test('tiêu đề: bỏ giới từ thừa sau khi cắt ngày và bỏ động 
   // không có người → giữ nguyên động từ
   assert.equal(parseTaskSentence(db, 'nhắc nộp báo cáo vào cuối tháng', TODAY).title, 'Nhắc nộp báo cáo');
 });
+
+test('tên trần đầu câu: một tên đơn lẻ không bao giờ là người; cần ≥ 2 tên viết hoa', () => {
+  const { db, ids } = setup();
+  // Một tên trần → không nhận
+  const one = parseTaskSentence(db, 'Hùng dọn dẹp kho', TODAY);
+  assert.deepEqual(one.assignees, []);
+  assert.equal(one.title, 'Hùng dọn dẹp kho');
+  // Hai tên nhưng không viết hoa → không nhận
+  const low = parseTaskSentence(db, 'hùng và hải dọn dẹp kho', TODAY);
+  assert.deepEqual(low.assignees, []);
+  assert.equal(low.title, 'Hùng và hải dọn dẹp kho');
+  // Hai tên viết hoa → nhận
+  const two = parseTaskSentence(db, 'Hùng, Hải dọn dẹp kho', TODAY);
+  assert.deepEqual(two.assignees.map((a) => a.id), [ids.hung, ids.hai]);
+  assert.equal(two.title, 'Dọn dẹp kho');
+});
+
+test('giao cho đơn vị: không coi là người, có ghi chú, bỏ khỏi tiêu đề', () => {
+  const { db } = setup();
+  db.prepare("INSERT INTO units (name) VALUES ('Trung đội 2')").run();
+  const r = parseTaskSentence(db, 'giao cho Trung đội 2 sơn lại cổng doanh trại trước 20/12', TODAY);
+  assert.deepEqual(r.assignees, []);
+  assert.deepEqual(r.unmatched, []);
+  assert.deepEqual(r.ambiguous, []);
+  assert.deepEqual(r.units, ['Trung đội 2']);
+  assert.equal(r.title, 'Sơn lại cổng doanh trại');
+  assert.equal(r.due_date, '2026-12-20');
+  assert.ok(r.notes.includes('Giao cho đơn vị: Trung đội 2 — đồng chí chọn người thực hiện'));
+  assert.ok(!r.notes.some((n) => n.startsWith('Không tìm thấy')));
+  // Đơn vị không có trong danh sách nhưng đúng dạng "tiểu đội N" cũng nhận là đơn vị.
+  const t = parseTaskSentence(db, 'giao cho tiểu đội 3 trực nhật', TODAY);
+  assert.deepEqual(t.units, ['tiểu đội 3']);
+  assert.deepEqual(t.unmatched, []);
+  assert.equal(t.title, 'Trực nhật');
+});

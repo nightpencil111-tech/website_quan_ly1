@@ -405,3 +405,8 @@ test('checkConnection: phản hồi không phải JSON và hết giờ có thôn
   assert.equal(r2.ok, false);
   assert.match(r2.error, /trong thời gian chờ/);
 });
+test('runAi: signal không hợp lệ → thông báo không có cặp ngoặc rỗng', async () => {
+  const { db, user } = setup('http://127.0.0.1:1');
+  await assert.rejects(ai.runAi(db, user, { task: 'rut_gon', input: 'abc' }, () => {}, {}),
+    (e) => e instanceof AppError && e.message === 'Không kết nối được máy AI');
+});

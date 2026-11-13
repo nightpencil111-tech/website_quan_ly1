@@ -5,6 +5,8 @@
   <% if (draft.priority) { %><input type="hidden" name="priority" value="<%= draft.priority %>"><% } %>
   <% if (draft.category) { %><input type="hidden" name="category" value="<%= draft.category %>"><% } %>
   <% if (draft.due_date) { %><input type="hidden" name="due_date" value="<%= draft.due_date %>"><% } %>
+  <% if (draft.description) { %><input type="hidden" name="description" value="<%= draft.description %>"><% } %>
+  <% (draft.units || []).forEach(function (u) { %><input type="hidden" name="unit" value="<%= u %>"><% }) %>
   <% resolved.forEach(function (a) { %><input type="hidden" name="assignee_ids" value="<%= a.id %>"><% }) %>
   <% draft.unmatched.forEach(function (u) { %><input type="hidden" name="unmatched" value="<%= u %>"><% }) %>
   <% draft.ambiguous.forEach(function (amb, i) { %>

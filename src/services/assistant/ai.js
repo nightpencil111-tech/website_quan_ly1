@@ -389,7 +389,7 @@ async function runAi(db, user, { task, input, docType, extra } = {}, onChunk, si
     if (timeout.aborted) throw new AppError(ERR_TIMEOUT);
     if (e instanceof AppError) throw e;
     if (ctrl.signal.aborted) throw new AppError('Đã dừng yêu cầu AI');
-    throw new AppError(`Không kết nối được máy AI (${host})`);
+    throw new AppError(`Không kết nối được máy AI${host ? ` (${host})` : ''}`);
   } finally {
     clearTimeout(idleTimer);
     ctrl.abort(); // đóng kết nối tới Ollama nếu còn mở

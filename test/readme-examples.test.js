@@ -94,3 +94,39 @@ test('README: câu hỏi về tư tưởng, hoàn cảnh bị từ chối với 
     }
   }
 });
+
+test('câu thường mở đầu bằng từ ghép trùng tên người: không giao cho ai, giữ nguyên tiêu đề', () => {
+  const { db } = demo();
+  for (const t of ['Bảo đảm an toàn doanh trại', 'An toàn giao thông', 'Phong trào thi đua', 'Minh bạch tài chính',
+    'Long trọng kỷ niệm', 'Nghĩa trang liệt sĩ', 'Dũng cảm cứu người', 'Cường độ huấn luyện']) {
+    const r = parseTaskSentence(db, t, TODAY);
+    assert.deepEqual(r.assignees, [], t);
+    assert.deepEqual(r.ambiguous, [], t);
+    assert.deepEqual(r.unmatched, [], t);
+    assert.equal(r.title, t);
+  }
+});
+
+test('hỏi đáp: việc quá hạn/đến hạn của một người (dữ liệu thử)', () => {
+  const { db, user } = demo();
+  const mgr = user('ctv');
+  const bao = user('cs02');
+  const cuong = user('cs03');
+  let r = qa.answer(db, mgr, 'việc quá hạn của Bảo', TODAY);
+  assert.equal(r.intent, 'viec_qua_han');
+  assert.ok(r.summary.includes('Trần Minh Bảo'), r.summary);
+  assert.ok(r.rows.every((x) => x.cells[1].includes('Trần Minh Bảo')));
+  r = qa.answer(db, mgr, 'việc đến hạn tháng này của Bảo', TODAY);
+  assert.equal(r.intent, 'viec_den_han');
+  assert.ok(r.summary.includes('Trần Minh Bảo'), r.summary);
+  assert.ok(r.rows.every((x) => x.cells[1].includes('Trần Minh Bảo')));
+  // chiến sĩ: chỉ hỏi được của chính mình
+  r = qa.answer(db, bao, 'việc quá hạn của Bảo', TODAY);
+  assert.ok(!r.denied);
+  assert.ok(r.rows.every((x) => x.cells[1].includes('Trần Minh Bảo')));
+  for (const q of ['việc quá hạn của Bảo', 'việc đến hạn của Bảo']) {
+    r = qa.answer(db, cuong, q, TODAY);
+    assert.equal(r.denied, true, q);
+    assert.deepEqual(r.rows, []);
+  }
+});

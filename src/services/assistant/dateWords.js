@@ -81,7 +81,13 @@ const PATTERNS = [
     check: (orig, folded, start, m) => !m[1] || origMatches(orig, folded, start, start + 3, ['thứ']),
   },
   {
-    re: `${B}(?:ngay )?(\\d{1,2})[/-](\\d{1,2})(?:[/-](\\d{4}))?(?![0-9/-])`,
+    // "20/12", "ngày 20/12/2027": dấu "/" bắt buộc; dạng gạch "20-12" chỉ nhận khi có "ngày" đứng trước
+    // (để "họp 2-3 lần" không thành ngày 02/03).
+    re: `${B}(?:ngay )?(\\d{1,2})/(\\d{1,2})(?:/(\\d{4}))?(?![0-9/-])`,
+    fn: (m, t) => dayMonth(t, m[1], m[2], m[3]),
+  },
+  {
+    re: `${B}ngay (\\d{1,2})-(\\d{1,2})(?:-(\\d{4}))?(?![0-9/-])`,
     fn: (m, t) => dayMonth(t, m[1], m[2], m[3]),
   },
   {
@@ -90,6 +96,12 @@ const PATTERNS = [
   },
   { re: `${B}trong (?:vong )?(\\d{1,3}) ngay(?: toi)?${E}`, fn: (m, t) => addDays(t, Number(m[1])) },
   { re: `${B}(\\d{1,3}) ngay (?:nua|toi)${E}`, fn: (m, t) => addDays(t, Number(m[1])) },
+  // "sau N ngày" (= hôm nay + N); chỉ khi viết "sau" (không phải "sáu").
+  {
+    re: `${B}sau (\\d{1,3}) ngay(?: (?:nua|toi))?${E}`,
+    fn: (m, t) => addDays(t, Number(m[1])),
+    check: (orig, folded, start) => origMatches(orig, folded, start, start + 3, ['sau']),
+  },
   // "tuần sau" = thứ Sáu của tuần lịch kế tiếp.
   { re: `${B}tuan (?:sau|toi)${E}`, fn: (m, t) => addDays(t, 8 - weekday(t) + 4) },
   // "cuối tuần" = Chủ nhật tuần này (hôm nay Chủ nhật → hôm nay).
