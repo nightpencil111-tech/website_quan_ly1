@@ -1,0 +1,68 @@
+<h1>Trợ lý</h1>
+<nav class="tabs" aria-label="Trợ lý">
+  <% tabs.forEach(function (t) { %><a href="/assistant?tab=<%= t[0] %>" class="<%= tab === t[0] ? 'active' : '' %>"><%= t[1] %></a><% }) %>
+</nav>
+<% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+
+<% if (tab === 'giao-viec') { %>
+<form method="post" action="/assistant/task" class="form-card wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Đồng chí nói việc cần giao như bình thường
+    <textarea name="text" rows="3" maxlength="1000" required placeholder="vd: giao đ/c Bình soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp"><%= taskText %></textarea></label>
+  <p class="muted">Trợ lý đọc ra tiêu đề, người thực hiện, hạn và mức ưu tiên rồi điền sẵn vào phiếu giao việc; đồng chí kiểm tra trước khi lưu.</p>
+  <button type="submit" class="btn btn-primary">Phân tích và điền phiếu</button>
+</form>
+<% } %>
+
+<% if (tab === 'hoi-dap') { %>
+<form method="post" action="/assistant/ask" class="inline-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <input type="search" name="q" value="<%= q %>" maxlength="300" placeholder="vd: việc nào quá hạn?" size="50" required>
+  <button type="submit" class="btn btn-primary">Hỏi</button>
+</form>
+<p class="muted">Gợi ý:
+  <% suggestions.forEach(function (s) { %><a class="chip" href="/assistant?tab=hoi-dap&amp;q=<%= encodeURIComponent(s) %>"><%= s %></a> <% }) %></p>
+<%- include('_qa-result', { result: result }) %>
+<% } %>
+
+<% if (tab === 'soan-thao' && manager) { %>
+<div class="panel ai-compose" id="compose" data-doctype="">
+  <div class="inline-form">
+    <select id="ol-key" aria-label="Mẫu dàn ý"><% outlineList.forEach(function (o) { %><option value="<%= o[0] %>"><%= o[1] %></option><% }) %></select>
+    <input type="text" id="ol-topic" maxlength="200" placeholder="Chủ đề (tùy chọn)" aria-label="Chủ đề">
+    <button type="button" class="btn" id="ol-btn">Chèn dàn ý</button>
+  </div>
+  <label>Nội dung (dàn ý, yêu cầu hoặc văn bản cần xử lý)
+    <textarea id="ai-input" rows="12" maxlength="12000"></textarea></label>
+  <% if (aiEnabled) { %>
+  <div class="inline-form">
+    <select id="ai-task" aria-label="Tác vụ AI">
+      <option value="viet_noi_dung">Viết nội dung từ dàn ý</option>
+      <option value="sua_chinh_ta">Sửa chính tả</option>
+      <option value="van_phong_quan_doi">Chỉnh văn phong quân đội</option>
+      <option value="rut_gon">Rút gọn</option>
+      <option value="viet_lai">Viết lại</option>
+    </select>
+    <select id="ai-doctype" aria-label="Loại văn bản">
+      <option value="">Loại văn bản</option>
+      <% outlineList.forEach(function (o) { %><option value="<%= o[0] %>"><%= o[1] %></option><% }) %>
+    </select>
+    <input type="text" id="ai-trichyeu" maxlength="300" placeholder="Trích yếu (tùy chọn)" aria-label="Trích yếu">
+    <button type="button" class="btn btn-primary" id="ai-run">Chạy AI</button>
+  </div>
+  <div class="ai-panel" data-ai-panel hidden>
+    <pre class="ai-out" data-role="out"></pre>
+    <p class="inline-form">
+      <button type="button" class="btn" data-role="stop" disabled>Dừng</button>
+      <button type="button" class="btn" data-role="copy" disabled>Sao chép</button>
+      <button type="button" class="btn" data-role="use" disabled>Dùng kết quả</button>
+      <span class="muted" data-role="status"></span>
+    </p>
+  </div>
+  <p class="muted">Kết quả do AI sinh ra có thể sai; đồng chí đọc lại và chỉnh sửa trước khi dùng.</p>
+  <% } else { %>
+  <p class="muted">Trợ lý AI chưa được bật (Quản trị → Cài đặt). Dàn ý vẫn dùng được.</p>
+  <% } %>
+</div>
+<% } %>
+<script src="/js/assistant.js" defer></script>

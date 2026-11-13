@@ -177,3 +177,11 @@ tr.level-dac_biet td { background: #fbeaea; }
   .tabs a { padding: 6px 10px; font-size: 14px; }
 }
 .btn-row { margin-top: 14px; }
+
+/* Trợ lý */
+.chip { display: inline-block; padding: 2px 10px; margin: 2px 4px 2px 0; border: 1px solid var(--border); border-radius: 12px; font-size: 13px; text-decoration: none; background: #fff; }
+.ai-out { white-space: pre-wrap; word-wrap: break-word; background: #f7f7f2; border: 1px solid var(--border); border-radius: 4px; padding: 10px; min-height: 60px; max-height: 360px; overflow: auto; font-family: inherit; font-size: 15px; }
+.ai-bar { margin: -6px 0 16px; padding: 8px 10px; background: #f7f7f2; border: 1px dashed var(--border); border-radius: 4px; }
+.ai-bar .inline-form { margin-bottom: 6px; }
+.ai-bar select, .ai-bar input { width: auto !important; display: inline-block !important; margin-top: 0 !important; }
+.ai-compose textarea { min-height: 200px; }

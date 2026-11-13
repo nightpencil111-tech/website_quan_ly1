@@ -1,0 +1,20 @@
+<% if (result) { %>
+<section class="panel qa-result" aria-live="polite">
+  <% if (result.title) { %><h3><%= result.title %></h3><% } %>
+  <% if (result.summary) { %><p<%= result.denied ? ' class=muted' : '' %>><%= result.summary %></p><% } %>
+  <% if (result.rows && result.rows.length) { %>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><% (result.columns || []).forEach(function (c) { %><th><%= c %></th><% }) %></tr></thead>
+    <tbody>
+    <% result.rows.forEach(function (row) { %>
+      <tr><% row.cells.forEach(function (c, i) { %><td><% if (row.href && i === 0) { %><a href="<%= row.href %>"><%= c %></a><% } else { %><%= c %><% } %></td><% }) %></tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } else if (result.empty_text) { %><p class="muted"><%= result.empty_text %></p><% } %>
+  <% if (result.suggestions && result.suggestions.length) { %>
+    <p>Câu hỏi mẫu:</p>
+    <ul><% result.suggestions.forEach(function (s) { %><li><a href="/assistant?tab=hoi-dap&amp;q=<%= encodeURIComponent(s) %>"><%= s %></a></li><% }) %></ul>
+  <% } %>
+</section>
+<% } %>

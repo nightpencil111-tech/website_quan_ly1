@@ -1,5 +1,9 @@
 <h1><%= target ? 'Sửa công việc' : 'Giao việc mới' %></h1>
 <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (typeof prefilled !== 'undefined' && prefilled) { %>
+<div class="alert alert-info" role="status">Phiếu được điền sẵn từ Trợ lý — đồng chí kiểm tra trước khi lưu.
+  <% if (prefillNotes && prefillNotes.length) { %><ul><% prefillNotes.forEach(function (n) { %><li><%= n %></li><% }) %></ul><% } %></div>
+<% } %>
 <% const selected = (form.assignee_ids || []).map(Number); %>
 <form method="post" action="<%= target ? '/tasks/' + target.id : '/tasks' %>" class="form-card wide" id="task-form">
   <input type="hidden" name="_csrf" value="<%= csrf %>">

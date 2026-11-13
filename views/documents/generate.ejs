@@ -42,12 +42,44 @@
       <% } else if (f.type === 'date') { %><input type="date" name="manual[<%= f.code %>]" value="<%= v %>" <%= f.required ? 'required' : '' %>>
       <% } else { %><input type="text" name="manual[<%= f.code %>]" value="<%= v %>" <%= f.required ? 'required' : '' %>><% } %>
     </label>
+    <% if (f.type === 'textarea') { %>
+    <div class="ai-bar" data-target="manual[<%= f.code %>]" data-doctype="<%= aiDocType %>">
+      <div class="inline-form">
+        <select data-role="ol-key" aria-label="Mẫu dàn ý"><% outlineList.forEach(function (o) { %><option value="<%= o[0] %>" <%= o[0] === aiDocType ? 'selected' : '' %>><%= o[1] %></option><% }) %></select>
+        <input type="text" data-role="ol-topic" maxlength="200" placeholder="Chủ đề (tùy chọn)" aria-label="Chủ đề">
+        <button type="button" class="btn" data-role="ol-btn">Chèn dàn ý</button>
+        <% if (aiEnabled) { %>
+        <button type="button" class="btn" data-role="write">AI viết nội dung</button>
+        <select data-role="fix" aria-label="AI sửa">
+          <option value="">AI sửa…</option>
+          <option value="sua_chinh_ta">Sửa chính tả</option>
+          <option value="van_phong_quan_doi">Chỉnh văn phong quân đội</option>
+          <option value="rut_gon">Rút gọn</option>
+          <option value="viet_lai">Viết lại</option>
+        </select>
+        <% } %>
+        <span class="muted" data-role="note"></span>
+      </div>
+      <% if (aiEnabled) { %>
+      <div class="ai-panel" data-ai-panel hidden>
+        <pre class="ai-out" data-role="out"></pre>
+        <p class="inline-form">
+          <button type="button" class="btn" data-role="stop" disabled>Dừng</button>
+          <button type="button" class="btn" data-role="copy" disabled>Sao chép</button>
+          <button type="button" class="btn" data-role="use" disabled>Chèn vào ô</button>
+          <span class="muted" data-role="status"></span>
+        </p>
+      </div>
+      <% } else { %><p class="muted">Trợ lý AI chưa được bật (Quản trị → Cài đặt).</p><% } %>
+    </div>
+    <% } %>
   <% }) %>
   <label>Ngày tháng trên văn bản (để trống sẽ lấy hôm nay)
     <input type="text" name="ngay_thang" maxlength="120" placeholder="vd: Đồng Nai, ngày 12 tháng 11 năm 2026" value="<%= form.ngay_thang %>"></label>
   <button type="submit" class="btn btn-primary">Tạo và tải văn bản</button>
   <a class="btn" href="/documents">Quay lại</a>
 </form>
+<script src="/js/assistant.js" defer></script>
 <script>
 (function () {
   var all = document.getElementById('check-all');

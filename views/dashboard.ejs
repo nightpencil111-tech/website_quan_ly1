@@ -18,6 +18,12 @@ const cards = [
   <% }) %>
 </div>
 
+<form method="get" action="/assistant" class="inline-form" role="search">
+  <input type="hidden" name="tab" value="hoi-dap">
+  <input type="search" name="q" maxlength="300" size="40" placeholder="Hỏi nhanh Trợ lý: việc nào quá hạn?" aria-label="Hỏi nhanh Trợ lý" required>
+  <button type="submit" class="btn">Hỏi</button>
+</form>
+
 <% if (soldierBox) { %>
 <div class="stat-grid">
   <a class="stat-card" href="/soldiers"><span class="stat-n"><%= soldierBox.stats.onLeaveToday %></span><span class="stat-l">Đang nghỉ phép</span></a>

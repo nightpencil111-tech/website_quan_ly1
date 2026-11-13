@@ -44,3 +44,42 @@ const val = function (v) { return v === null || v === undefined ? '' : v; };
   <% }) %>
   <button type="submit" class="btn btn-primary">Lưu thông tin đơn vị</button>
 </form>
+<h2 id="tro-ly-ai">Trợ lý AI</h2>
+<% if (aiError) { %><div class="alert alert-error" role="alert"><%= aiError %></div><% } %>
+<form method="post" action="/admin/settings/ai" class="form-card wide" id="ai-settings">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <p class="muted">Trợ lý AI chạy hoàn toàn trong mạng nội bộ qua phần mềm Ollama, không gửi dữ liệu ra Internet và không đọc hồ sơ quân nhân. Máy 8GB RAM nên dùng mô hình <strong>qwen2.5:3b</strong>. Có thể trỏ tới một máy khác trong mạng nội bộ (nhập địa chỉ IP, ví dụ http://192.168.1.50:11434); địa chỉ ngoài mạng nội bộ sẽ bị từ chối.</p>
+  <label class="check"><input type="checkbox" name="ai_enabled" value="1" <%= ai.ai_enabled === '1' ? 'checked' : '' %>> Bật Trợ lý AI</label>
+  <label>Địa chỉ máy AI <input type="text" name="ai_url" maxlength="200" value="<%= ai.ai_url %>" required></label>
+  <label>Mô hình <input type="text" name="ai_model" maxlength="100" value="<%= ai.ai_model %>" required></label>
+  <label>Thời gian chờ không thấy phản hồi (giây, 10–600) <input type="number" name="ai_timeout_s" min="10" max="600" step="1" value="<%= ai.ai_timeout_s %>" required></label>
+  <h3>Văn bản mẫu để AI học văn phong (tùy chọn, tối đa 4000 ký tự mỗi mẫu)</h3>
+  <label>Mẫu kế hoạch <textarea name="sample_ke_hoach" rows="5" maxlength="4000"><%= ai.ai_samples.ke_hoach %></textarea></label>
+  <label>Mẫu báo cáo <textarea name="sample_bao_cao" rows="5" maxlength="4000"><%= ai.ai_samples.bao_cao %></textarea></label>
+  <label>Mẫu chung <textarea name="sample_chung" rows="5" maxlength="4000"><%= ai.ai_samples.chung %></textarea></label>
+  <p class="btn-row">
+    <button type="submit" class="btn btn-primary">Lưu cài đặt Trợ lý AI</button>
+    <button type="button" class="btn" id="ai-check">Kiểm tra kết nối</button>
+    <span class="muted" id="ai-check-out" role="status"></span>
+  </p>
+</form>
+<script>
+(function () {
+  var btn = document.getElementById('ai-check');
+  var out = document.getElementById('ai-check-out');
+  if (!btn) return;
+  var meta = document.querySelector('meta[name="csrf"]');
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    out.textContent = 'Đang kiểm tra (đồng chí lưu cài đặt trước nếu vừa sửa)...';
+    fetch('/admin/settings/ai/check', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-Token': meta ? meta.content : '' }, body: '{}' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.ok) out.textContent = 'Kết nối được. Mô hình trên máy AI: ' + (j.models.join(', ') || '(chưa có)') + (j.hasModel ? '' : ' — chưa có mô hình đã cài đặt ở trên.');
+        else out.textContent = 'Lỗi: ' + (j.error || 'không rõ');
+      })
+      .catch(function () { out.textContent = 'Lỗi kết nối hoặc phiên hết hạn, đồng chí tải lại trang.'; })
+      .then(function () { btn.disabled = false; });
+  });
+})();
+</script>

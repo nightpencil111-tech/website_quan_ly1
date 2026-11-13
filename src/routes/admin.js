@@ -8,6 +8,7 @@ const audit = require('../services/audit');
 const soldiers = require('../services/soldiers');
 const milestones = require('../services/milestones');
 const unitInfo = require('../services/unitInfo');
+const aiSvc = require('../services/assistant/ai');
 const { RANKS, RANKS_WITHOUT_INTERVAL } = require('../util/ranks');
 const { AppError } = require('../util/errors');
 const { today } = require('../util/date');
@@ -158,7 +159,7 @@ module.exports = (db) => {
     title: 'Cài đặt hệ thống', tab: 'settings', error, saved,
     threshold: value !== undefined ? value : users.getOverloadThreshold(db),
     ms: milestones.getMilestoneSettings(db), msRanks: RANKS.filter((k) => !RANKS_WITHOUT_INTERVAL.includes(k)),
-    msForm: null, msError: null, unit: unitInfo.getUnitInfo(db), unitKeys: unitInfo.UNIT_KEYS, unitExamples: unitInfo.UNIT_EXAMPLES, unitError: null, ...extra,
+    msForm: null, msError: null, unit: unitInfo.getUnitInfo(db), unitKeys: unitInfo.UNIT_KEYS, unitExamples: unitInfo.UNIT_EXAMPLES, unitError: null, ai: aiSvc.getAiSettings(db), aiError: null, ...extra,
   });
   r.get('/admin/settings', (req, res) => renderSettings(res, null, req.query.saved === '1'));
   r.post('/admin/settings', handle((req, res) => {
@@ -200,6 +201,32 @@ module.exports = (db) => {
     for (const k of Object.keys(unitInfo.UNIT_KEYS)) unit[k] = String(req.body[k] ?? '');
     renderSettings(res, null, false, 400, undefined, { unitError: e.message, unit });
   }));
+
+  r.post('/admin/settings/ai', async (req, res, next) => {
+    const b = req.body || {};
+    try {
+      await aiSvc.saveAiSettings(db, b, req.user.id);
+      res.redirect('/admin/settings?saved=1');
+    } catch (e) {
+      if (!(e instanceof AppError)) return next(e);
+      const str = (v) => String(v ?? '');
+      renderSettings(res, null, false, 400, undefined, {
+        aiError: e.message,
+        ai: {
+          ai_enabled: b.ai_enabled === '1' ? '1' : '0', ai_url: str(b.ai_url), ai_model: str(b.ai_model), ai_timeout_s: str(b.ai_timeout_s),
+          ai_samples: { ke_hoach: str(b.sample_ke_hoach), bao_cao: str(b.sample_bao_cao), chung: str(b.sample_chung) },
+        },
+      });
+    }
+  });
+
+  r.post('/admin/settings/ai/check', async (req, res, next) => {
+    try {
+      res.json(await aiSvc.checkConnection(db));
+    } catch (e) {
+      next(e);
+    }
+  });
 
   // ---- Nhật ký ----
   r.get('/admin/audit', (req, res) => {

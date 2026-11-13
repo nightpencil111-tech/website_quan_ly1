@@ -95,8 +95,31 @@ module.exports = (db) => {
   });
 
   const formCtx = (extra) => ({
-    people: users.listUsers(db), LABELS, error: null, checklistText: '', ...extra,
+    people: users.listUsers(db), LABELS, error: null, checklistText: '', prefilled: false, prefillNotes: [], ...extra,
   });
+
+  // Điền sẵn từ Trợ lý: giá trị nào không hợp lệ thì bỏ qua, không báo lỗi.
+  const prefill = (q) => {
+    const form = {};
+    const one = (v) => (typeof v === 'string' ? v.trim() : '');
+    const title = one(q.title).slice(0, 200);
+    if (title) form.title = title;
+    const desc = one(q.description).slice(0, 4000);
+    if (desc) form.description = desc;
+    if (Object.hasOwn(LABELS.priority, one(q.priority))) form.priority = one(q.priority);
+    if (Object.hasOwn(LABELS.category, one(q.category))) form.category = one(q.category);
+    const d = one(q.due_date);
+    const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + 'T00:00:00Z') : null;
+    if (dt && !Number.isNaN(dt.getTime()) && dt.toISOString().slice(0, 10) === d) form.due_date = d;
+    const ids = parseIds(q.assignee_ids);
+    if (ids.length) {
+      const ok = new Set(users.listUsers(db).map((p) => p.id));
+      const valid = [...new Set(ids)].filter((i) => ok.has(i));
+      if (valid.length) form.assignee_ids = valid;
+    }
+    const notes = [].concat(q.note ?? []).filter((n) => typeof n === 'string' && n.trim()).map((n) => n.trim().slice(0, 200)).slice(0, 5);
+    return { form, notes, any: Object.keys(form).length > 0 };
+  };
 
   r.get('/tasks/new', requireRole(...MANAGERS), (req, res) => {
     const form = { category: 'khac', priority: 'thuong', assignee_ids: [] };
@@ -110,7 +133,9 @@ module.exports = (db) => {
       form.template_id = tpl.id;
       checklistText = tpl.items.join('\n');
     }
-    res.render('tasks/form', formCtx({ title: 'Giao việc mới', target: null, form, checklistText }));
+    const pre = prefill(req.query);
+    Object.assign(form, pre.form);
+    res.render('tasks/form', formCtx({ title: 'Giao việc mới', target: null, form, checklistText, prefilled: pre.any, prefillNotes: pre.notes }));
   });
 
   r.post('/tasks', requireRole(...MANAGERS), wrap((req, res) => {

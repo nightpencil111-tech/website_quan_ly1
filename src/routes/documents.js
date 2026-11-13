@@ -1,5 +1,8 @@
 const express = require('express');
 const { requireLogin, requireRole } = require('../auth');
+const aiSvc = require('../services/assistant/ai');
+const { OUTLINES } = require('../services/assistant/outlines');
+const AI_DOC_TYPES = { 'Kế hoạch': 'ke_hoach', 'Báo cáo': 'bao_cao' };
 const docTemplates = require('../services/docTemplates');
 const docDetect = require('../services/docDetect');
 const { inspectTemplate } = require('../services/docRender');
@@ -268,6 +271,8 @@ module.exports = (db) => {
       ...base(), title: `Tạo văn bản: ${t.name}`, t, error, filters, unitEmpty: unitEmpty(), unit: unitInfo.getUnitInfo(db),
       unitKeys: unitInfo.UNIT_KEYS, isAdmin: res.locals.user && res.locals.user.role === 'admin',
       people: needPeople ? soldiers.listSoldiers(db, filters) : [], units: users.listUnits(db), SL: SOLDIER_LABELS, PARTY: PARTY_FILTERS,
+      aiEnabled: aiSvc.getAiSettings(db).ai_enabled === '1', aiDocType: AI_DOC_TYPES[t.name] || '',
+      outlineList: Object.entries(OUTLINES).map(([k, v]) => [k, v.label]),
       form: { soldier_ids: (form.soldier_ids || []).map(String), manual: form.manual || {}, ngay_thang: form.ngay_thang || '' },
     });
   };

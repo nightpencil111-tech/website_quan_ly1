@@ -60,6 +60,7 @@ function createApp({ dbPath }) {
   app.use(require('./routes/reports')(db));
   app.use(require('./routes/soldiers')(db));
   app.use(require('./routes/documents')(db));
+  app.use(require('./routes/assistant')(db));
   app.use(require('./routes/admin')(db));
 
   app.use((req, res) => {
