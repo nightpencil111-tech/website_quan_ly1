@@ -7,6 +7,7 @@ const templates = require('../services/templates');
 const { today } = require('../util/date');
 const { AppError } = require('../util/errors');
 const { LABELS } = require('../util/text');
+const { cleanNames } = require('../util/names');
 const { clean, scopeFilters: scope } = require('../util/filters');
 
 const isManager = (u) => u.role === 'admin' || u.role === 'manager';
@@ -117,7 +118,7 @@ module.exports = (db) => {
       const valid = [...new Set(ids)].filter((i) => ok.has(i));
       if (valid.length) form.assignee_ids = valid;
     }
-    const notes = [].concat(q.note ?? []).filter((n) => typeof n === 'string' && n.trim()).map((n) => n.trim().slice(0, 200)).slice(0, 5);
+    const notes = cleanNames(q.unmatched).map((n) => `Không tìm thấy người tên “${n}” (có thể đã bị khóa hoặc gõ sai).`);
     return { form, notes, any: Object.keys(form).length > 0 };
   };
 

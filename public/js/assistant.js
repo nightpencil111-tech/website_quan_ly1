@@ -2,7 +2,7 @@
   var meta = document.querySelector('meta[name="csrf"]');
   var token = meta ? meta.content : '';
   var EXPIRED = 'Phiên làm việc đã hết hạn hoặc không hợp lệ, đồng chí tải lại trang và thử lại.';
-  var ERR_TAIL = /\n\n\[Lỗi: ([^\]]*)\]$/;
+  var ERR_TAIL = /\n\n\[Lỗi: ([\s\S]*)\]$/;
 
   function postJson(url, obj, signal) {
     return fetch(url, {

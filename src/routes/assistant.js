@@ -6,6 +6,7 @@ const { parseTaskSentence } = require('../services/assistant/taskParser');
 const qa = require('../services/assistant/qa');
 const outlines = require('../services/assistant/outlines');
 const ai = require('../services/assistant/ai');
+const { cleanNames } = require('../util/names');
 
 const MANAGERS = ['admin', 'manager'];
 const isManager = (u) => MANAGERS.includes(u.role);
@@ -49,14 +50,14 @@ module.exports = (db) => {
   });
 
   // ---- Giao việc bằng lời ----
-  const prefillQuery = (draft, assigneeIds, notes) => {
+  const prefillQuery = (draft, assigneeIds, unmatched) => {
     const p = new URLSearchParams();
     p.set('title', draft.title);
     if (draft.priority) p.set('priority', draft.priority);
     if (draft.category) p.set('category', draft.category);
     if (draft.due_date) p.set('due_date', draft.due_date);
     for (const id of assigneeIds) p.append('assignee_ids', String(id));
-    for (const n of notes.slice(0, 5)) p.append('note', n.slice(0, 200));
+    for (const n of cleanNames(unmatched)) p.append('unmatched', n);
     return p;
   };
 
@@ -67,14 +68,26 @@ module.exports = (db) => {
       const ids = draft.assignees.map((a) => a.id);
       if (draft.ambiguous.length) {
         return res.render('assistant/task-result', {
-          title: 'Chọn đúng người', draft, resolved: draft.assignees, notes: draft.notes || [],
+          title: 'Chọn đúng người', draft, resolved: draft.assignees,
         });
       }
-      res.redirect('/tasks/new?' + prefillQuery(draft, ids, draft.notes || []).toString());
+      res.redirect('/tasks/new?' + prefillQuery(draft, ids, draft.unmatched).toString());
     } catch (e) {
       if (e instanceof AppError) return renderIndex(req, res, 'giao-viec', { taskText: text, error: e.message }, 400);
       next(e);
     }
+  });
+
+  // Chọn người cho các cụm trùng tên (pick_0, pick_1, ...) rồi chuyển sang phiếu điền sẵn.
+  r.get('/assistant/task/pick', requireRole(...MANAGERS), (req, res) => {
+    const ids = [];
+    const add = (v) => { const n = Number(v); if (Number.isInteger(n) && n > 0 && !ids.includes(n)) ids.push(n); };
+    [].concat(req.query.assignee_ids ?? []).forEach(add);
+    for (let i = 0; i < 20; i += 1) add(req.query[`pick_${i}`]);
+    const draft = {
+      title: str(req.query.title, 200), priority: str(req.query.priority, 20), category: str(req.query.category, 20), due_date: str(req.query.due_date, 10),
+    };
+    res.redirect('/tasks/new?' + prefillQuery(draft, ids, req.query.unmatched).toString());
   });
 
   // ---- Dàn ý ----

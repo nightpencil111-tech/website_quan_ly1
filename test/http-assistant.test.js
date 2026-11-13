@@ -88,8 +88,8 @@ test('manager: tên trùng → trang chọn người, rồi mới điền sẵn'
     const html = await r.text();
     assert.match(html, /Nguyễn Văn An/);
     assert.match(html, /Lê Hoàng An/);
-    assert.match(html, new RegExp(`type="radio"[^>]*value="${ids.an1}"`));
-    assert.match(html, /action="\/tasks\/new"/);
+    assert.match(html, new RegExp(`type="radio"[^>]*name="pick_0"[^>]*value="${ids.an1}"`));
+    assert.match(html, /action="\/assistant\/task\/pick"/);
   } finally { await s.close(); }
 });
 
@@ -203,4 +203,50 @@ test('form văn bản: nút AI theo cài đặt; menu Trợ lý', async () => {
     assert.match(html, /AI viết nội dung/);
     assert.match(html, /src="\/js\/assistant\.js"/);
   } finally { await fake.close(); await s.close(); }
+});
+
+test('/tasks/new: note tự do bị bỏ, unmatched được làm sạch', async () => {
+  const { s } = await boot();
+  try {
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const q = new URLSearchParams();
+    q.set('title', 'Việc');
+    q.set('note', 'Bấm vào http://xau.example để nhận thưởng');
+    q.append('unmatched', 'Nguyễn Hùng');
+    q.append('unmatched', '<b>x</b>');
+    q.append('unmatched', 'A'.repeat(41));
+    q.append('unmatched', 'Số 7');
+    const html = await (await get(s, m, '/tasks/new?' + q)).text();
+    assert.doesNotMatch(html, /xau\.example/);
+    assert.match(html, /Không tìm thấy người tên “Nguyễn Hùng” \(có thể đã bị khóa hoặc gõ sai\)\./);
+    assert.doesNotMatch(html, /<b>x/);
+    assert.doesNotMatch(html, /AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/);
+    assert.doesNotMatch(html, /Số 7/);
+  } finally { await s.close(); }
+});
+
+test('hai cụm trùng tên: mỗi cụm một nhóm radio, chọn xong chuyển sang phiếu', async () => {
+  const { s, ids } = await boot();
+  try {
+    const mk = (u, name) => Number(s.db.prepare('INSERT INTO users (username, password_hash, full_name, role) VALUES (?, ?, ?, ?)')
+      .run(u, hashPassword('pw12345678'), name, 'member').lastInsertRowid);
+    const h1 = mk('hung1', 'Đỗ Quang Hùng');
+    const h2 = mk('hung2', 'Vũ Minh Hùng');
+    const m = await loginAs(s.base, 'mgr', 'pw12345678');
+    const r = await post(s, m, '/assistant/task', { text: 'giao đ/c An và đ/c Hùng soạn kế hoạch ngày 25/12/2030, đ/c Zzzz' });
+    assert.equal(r.status, 200);
+    const html = await r.text();
+    assert.match(html, /name="pick_0"/);
+    assert.match(html, /name="pick_1"/);
+    assert.match(html, /name="unmatched" value="Zzzz"/i);
+    const loc = (await get(s, m, `/assistant/task/pick?title=Vi%E1%BB%87c&due_date=2030-12-25&pick_0=${ids.an1}&pick_1=${h2}&unmatched=Zzzz`)).headers.get('location');
+    assert.match(loc, /^\/tasks\/new\?/);
+    const u = new URLSearchParams(loc.split('?')[1]);
+    assert.deepEqual(u.getAll('assignee_ids').map(Number).sort(), [ids.an1, h2].sort());
+    assert.deepEqual(u.getAll('unmatched'), ['Zzzz']);
+    assert.equal(u.get('due_date'), '2030-12-25');
+    assert.ok(h1);
+    const member = await loginAs(s.base, 'mem', 'pw12345678');
+    assert.equal((await get(s, member, '/assistant/task/pick?pick_0=1')).status, 403);
+  } finally { await s.close(); }
 });
