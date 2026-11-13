@@ -18,6 +18,8 @@ const HARD_CAP_MS = 15 * 60 * 1000; // trần tổng thời gian một yêu cầ
 const ERR_PRIVATE = 'Địa chỉ máy AI phải nằm trong mạng nội bộ';
 const ERR_DOTTED = '; đồng chí nhập địa chỉ IP (ví dụ http://192.168.1.20:11434) hoặc tên máy không có dấu chấm';
 const ERR_TIMEOUT = 'Máy AI phản hồi quá lâu. Đồng chí thử rút ngắn văn bản, hoặc đề nghị quản trị tăng thời gian chờ trong Cài đặt.';
+const ERR_CHECK_TIMEOUT = 'Không kết nối được máy AI trong thời gian chờ — đồng chí kiểm tra máy AI đã bật và địa chỉ đúng.';
+const ERR_BAD_DATA = 'Máy AI trả về dữ liệu không hợp lệ';
 const CTX_TOKENS = 8192;
 // Tác vụ chỉnh sửa cần bám sát văn bản gốc → nhiệt độ thấp; tác vụ viết → cao hơn.
 const TEMPERATURE = { sua_chinh_ta: 0.2, van_phong_quan_doi: 0.2, rut_gon: 0.2, viet_noi_dung: 0.5, viet_lai: 0.5 };
@@ -227,7 +229,8 @@ async function checkConnection(db) {
     const res = await fetch(ep.href, { redirect: 'manual', signal: timeout });
     if (isRedirect(res)) throw new AppError('Máy AI trả về chuyển hướng — không được phép');
     if (!res.ok) throw await errorFromResponse(res);
-    const j = await res.json();
+    let j;
+    try { j = await res.json(); } catch { throw new AppError(ERR_BAD_DATA); }
     const models = Array.isArray(j && j.models) ? j.models.map((m) => String(m.name || m.model || '')).filter(Boolean) : [];
     const want = s.ai_model;
     const hasModel = models.includes(want) || (!want.includes(':') && models.includes(`${want}:latest`));
@@ -235,7 +238,7 @@ async function checkConnection(db) {
   } catch (e) {
     let error;
     if (e instanceof AppError) error = e.message;
-    else if (timeout.aborted) error = ERR_TIMEOUT;
+    else if (timeout.aborted) error = ERR_CHECK_TIMEOUT;
     else error = `Không kết nối được máy AI (${host})`;
     return { ok: false, models: [], hasModel: false, error };
   }
@@ -290,27 +293,29 @@ async function runAi(db, user, { task, input, docType, extra } = {}, onChunk, si
     throw e;
   }
   const ctrl = new AbortController();
-  running.set(uid, ctrl);
-
   const started = Date.now();
   // Hết giờ = không nhận được dữ liệu nào trong ai_timeout_s (đặt lại mỗi lần nhận), kèm trần tổng 15 phút.
   const idle = new AbortController();
   const idleMs = settings.ai_timeout_s * 1000;
   let idleTimer = null;
+  let hardCap = null;
   const touch = () => {
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => idle.abort(new DOMException('Hết giờ chờ máy AI', 'TimeoutError')), idleMs);
   };
-  touch();
-  const hardCap = AbortSignal.timeout(HARD_CAP_MS);
-  const timeout = { get aborted() { return idle.signal.aborted || hardCap.aborted; } };
-  const combined = AbortSignal.any([ctrl.signal, idle.signal, hardCap, ...(signal ? [signal] : [])]);
+  const timeout = { get aborted() { return idle.signal.aborted || (hardCap !== null && hardCap.aborted); } };
   let host = '';
   let charsOut = 0;
   let outcome = 'lỗi';
   let reader = null;
   let chunkError = null;
+  let sawJson = false;
+  let sawBad = false;
   try {
+    running.set(uid, ctrl);
+    touch();
+    hardCap = AbortSignal.timeout(HARD_CAP_MS);
+    const combined = AbortSignal.any([ctrl.signal, idle.signal, hardCap, ...(signal ? [signal] : [])]);
     const ep = await endpoint(settings, '/api/chat');
     host = ep.host;
     const res = await fetch(ep.href, {
@@ -337,7 +342,8 @@ async function runAi(db, user, { task, input, docType, extra } = {}, onChunk, si
     const handleLine = (line) => {
       if (!line.trim()) return;
       let obj;
-      try { obj = JSON.parse(line); } catch { return; } // dòng hỏng → bỏ qua, đọc tiếp
+      try { obj = JSON.parse(line); } catch { sawBad = true; return; } // dòng hỏng → bỏ qua, đọc tiếp
+      sawJson = true;
       if (obj && obj.error) throw new AppError(`Máy AI báo lỗi: ${String(obj.error).slice(0, 300)}`);
       const c = obj && obj.message && typeof obj.message.content === 'string' ? obj.message.content : '';
       if (c) {
@@ -369,6 +375,7 @@ async function runAi(db, user, { task, input, docType, extra } = {}, onChunk, si
       }
     }
     // Hết stream mà chưa có done:true → coi là lỗi (phần chữ đã nhận vẫn đã được gửi qua onChunk).
+    if (!done && !sawJson && sawBad) throw new AppError(ERR_BAD_DATA);
     if (!done) throw new AppError(`Máy AI ngắt kết nối giữa chừng (${host})`);
     outcome = 'xong';
     const ms = Date.now() - started;

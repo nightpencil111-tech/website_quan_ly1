@@ -222,3 +222,16 @@ test('câu lạ → intent null kèm 6 gợi ý; suggestions theo vai trò', () 
   }
   assert.ok(INTENTS.length >= 12);
 });
+
+test('câu hỏi về tư tưởng/hoàn cảnh → từ chối với mọi vai trò', () => {
+  const ctx = setup();
+  for (const who of ['mgr', 'hung']) {
+    for (const q of ['tư tưởng của Hùng thế nào', 'ai có hoàn cảnh khó khăn?', 'việc quá hạn và tư tưởng']) {
+      const r = ask(ctx, who, q);
+      assert.equal(r.intent, 'tu_choi');
+      assert.deepEqual(r.rows, []);
+      assert.match(r.summary, /không trả lời về tư tưởng, hoàn cảnh gia đình/);
+      assert.ok(!r.denied);
+    }
+  }
+});

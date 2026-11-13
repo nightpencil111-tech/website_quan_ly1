@@ -20,7 +20,7 @@ module.exports = (db) => {
   const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
   const tabsFor = (user) => (isManager(user)
-    ? [['giao-viec', 'Giao việc bằng lời'], ['hoi-dap', 'Hỏi đáp'], ['soan-thao', 'Soạn thảo']]
+    ? [['giao-viec', 'Giao việc nhanh'], ['hoi-dap', 'Hỏi đáp'], ['soan-thao', 'Soạn thảo']]
     : [['hoi-dap', 'Hỏi đáp']]);
 
   const renderIndex = (req, res, tab, extra = {}, status = 200) => {
@@ -49,7 +49,7 @@ module.exports = (db) => {
     renderIndex(req, res, 'hoi-dap', runAsk(req, req.body.q));
   });
 
-  // ---- Giao việc bằng lời ----
+  // ---- Giao việc nhanh ----
   const prefillQuery = (draft, assigneeIds, unmatched) => {
     const p = new URLSearchParams();
     p.set('title', draft.title);

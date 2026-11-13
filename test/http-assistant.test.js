@@ -39,7 +39,7 @@ test('member: chỉ thấy thẻ Hỏi đáp, không giao việc được', asyn
     assert.equal(r.status, 200);
     const html = await r.text();
     assert.match(html, /Hỏi đáp/);
-    assert.doesNotMatch(html, /Giao việc bằng lời/);
+    assert.doesNotMatch(html, /Giao việc nhanh/);
     assert.doesNotMatch(html, /Soạn thảo/);
     assert.equal((await get(s, mem, '/assistant?tab=soan-thao')).status, 200); // rơi về Hỏi đáp
     assert.equal((await post(s, mem, '/assistant/task', { text: 'giao đ/c Bình làm báo cáo' })).status, 403);

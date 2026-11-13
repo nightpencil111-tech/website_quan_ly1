@@ -279,7 +279,7 @@ d.save(sys.argv[1])`, docxPath]);
     }
     await shot('56-cs-tro-ly', '/assistant');
     const tabsText = await page.locator('nav.tabs').innerText();
-    if (/Hỏi đáp/.test(tabsText) && !/Giao việc/.test(tabsText) && !/Soạn thảo/.test(tabsText)) pass('Trợ lý (cs01): chỉ có tab Hỏi đáp, không có Giao việc/Soạn thảo');
+    if (/Hỏi đáp/.test(tabsText) && !/Giao việc nhanh/.test(tabsText) && !/Soạn thảo/.test(tabsText)) pass('Trợ lý (cs01): chỉ có tab Hỏi đáp, không có Giao việc/Soạn thảo');
     else fail('Trợ lý (cs01): hiện tab không đúng: ' + tabsText);
     const leaks = ['Tư tưởng', 'GHI CHÚ TƯ TƯỞNG CỦA AN', 'GHI CHÚ HOÀN CẢNH CỦA AN'].filter((t) => mine.includes(t));
     if (leaks.length === 0) pass('Hồ sơ của tôi (cs01): không có dữ liệu tư tưởng/hoàn cảnh khó khăn');

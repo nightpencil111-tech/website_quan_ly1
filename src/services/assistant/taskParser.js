@@ -156,7 +156,41 @@ function parsePeople(orig, folded, cands, blocked) {
     return { person: { words: take, found: [] }, next: i + take.length };
   };
 
+  // Danh sách tên trần ở ĐẦU câu ("Bảo và Cường dọn dẹp ..."): chỉ nhận khi mọi cụm đều khớp được ứng viên
+  // (đúng dấu như tên gốc, để "Báo cáo ..." không thành "Bảo") và sau danh sách còn một cụm động từ.
+  const readBareLead = () => {
+    if (!toks.length || !isWord(toks[0]) || triggerAt(orig, folded, toks, 0)) return null;
+    const list = [];
+    let j = 0;
+    let lastEnd = -1;
+    for (;;) {
+      const r = readName(j, false);
+      if (!r) break;
+      const spoken = orig.slice(r.person.words[0].start, r.person.words[r.person.words.length - 1].end)
+        .toLowerCase().split(/\s+/);
+      const found = r.person.found.filter((c) => {
+        const own = c.full_name.toLowerCase().split(/\s+/);
+        return spoken.every((w) => own.includes(w));
+      });
+      if (!found.length) return null;
+      list.push({ words: r.person.words, found });
+      lastEnd = r.next;
+      j = r.next;
+      const sep = toks[j];
+      if (sep && (sep.t === 'va' || sep.t === ',')) j += 1; else break;
+    }
+    if (!list.length || lastEnd !== j) return null; // kết thúc bằng từ nối thì không nhận
+    const next = toks[j];
+    if (!next || !isWord(next) || SEPARATORS.has(next.t)) return null;
+    return { list, next: lastEnd };
+  };
   let i = 0;
+  const bare = readBareLead();
+  if (bare) {
+    persons.push(...bare.list);
+    spans.push({ start: toks[0].start, end: toks[bare.next - 1].end });
+    i = bare.next;
+  }
   while (i < toks.length) {
     const trg = triggerAt(orig, folded, toks, i);
     if (!trg) { i += 1; continue; }
@@ -196,7 +230,7 @@ function parsePeople(orig, folded, cands, blocked) {
   return { persons, spans };
 }
 
-function buildTitle(orig, spans) {
+function buildTitle(orig, spans, hadPerson) {
   let s = orig;
   const sorted = [...spans].sort((a, b) => b.start - a.start);
   for (const sp of sorted) s = s.slice(0, sp.start) + ' ' + s.slice(sp.end);
@@ -205,6 +239,13 @@ function buildTitle(orig, spans) {
     .replace(/([,;:])(?:\s*[,;:])+/g, '$1')
     .replace(/^[\s,;:.!?\-–—]+|[\s,;:.!?\-–—]+$/g, '')
     .trim();
+  // Giới từ còn sót ở cuối sau khi bỏ cụm ngày ("... đảng viên vào").
+  for (;;) {
+    const t = s.replace(/\s+(vào|trước|trong|đến|hạn|chậm nhất)$/iu, '').replace(/[\s,;:.\-–—]+$/u, '');
+    if (t === s) break;
+    s = t;
+  }
+  if (hadPerson) s = s.replace(/^(nhắc(?!\s+nhở)|nhờ|yêu cầu|đề nghị)\s+/iu, '');
   return s ? s[0].toUpperCase() + s.slice(1) : '';
 }
 
@@ -248,7 +289,7 @@ function parseTaskSentence(db, text, today) {
   if (!people.persons.length) notes.push('Chưa xác định người thực hiện — đồng chí chọn trong biểu mẫu.');
   if (!due) notes.push('Chưa xác định hạn hoàn thành.');
 
-  const title = buildTitle(orig, removed);
+  const title = buildTitle(orig, removed, people.spans.length > 0);
   if (!/[\p{L}\p{N}]/u.test(title)) throw new AppError('Chưa có nội dung công việc');
 
   return {

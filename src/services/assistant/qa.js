@@ -261,6 +261,13 @@ function normalizeQuestion(text) {
 
 function answer(db, user, text, today) {
   const f = normalizeQuestion(text);
+  if (/\b(tu tuong|hoan canh)\b/.test(f)) {
+    return {
+      intent: 'tu_choi',
+      summary: 'Trợ lý không trả lời về tư tưởng, hoàn cảnh gia đình của quân nhân. Đồng chí xem trực tiếp trong Hồ sơ quân nhân (nếu có quyền).',
+      rows: [],
+    };
+  }
   const intent = INTENTS.find((i) => i.patterns.some((p) => p.test(f)));
   if (!intent) {
     return {

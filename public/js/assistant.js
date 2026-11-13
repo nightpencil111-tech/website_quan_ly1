@@ -2,7 +2,13 @@
   var meta = document.querySelector('meta[name="csrf"]');
   var token = meta ? meta.content : '';
   var EXPIRED = 'Phiên làm việc đã hết hạn hoặc không hợp lệ, đồng chí tải lại trang và thử lại.';
-  var ERR_TAIL = /\n\n\[Lỗi: ([\s\S]*)\]$/;
+  var ERR_MARK = '\n\n[Lỗi: ';
+  // Tìm đoạn lỗi ở CUỐI văn bản: lần xuất hiện sau cùng của ERR_MARK và kết thúc bằng ']'.
+  function errTail(text) {
+    var i = text.lastIndexOf(ERR_MARK);
+    if (i < 0 || text.charAt(text.length - 1) !== ']') return null;
+    return { start: i, msg: text.slice(i + ERR_MARK.length, -1) };
+  }
 
   function postJson(url, obj, signal) {
     return fetch(url, {
@@ -74,10 +80,10 @@
     locks.forEach(function (el) { el.disabled = true; });
     var dec = new TextDecoder('utf-8');
     function finish() {
-      var m = ERR_TAIL.exec(self.out.textContent);
+      var m = errTail(self.out.textContent);
       if (m) {
-        self.out.textContent = self.out.textContent.replace(ERR_TAIL, '');
-        self.say('Lỗi: ' + m[1]);
+        self.out.textContent = self.out.textContent.slice(0, m.start);
+        self.say('Lỗi: ' + m.msg);
       }
       self.setDone(self.out.textContent.length > 0);
     }
@@ -91,7 +97,7 @@
           if (r.done) {
             var tail = dec.decode();
             if (tail) self.out.textContent += tail;
-            if (!ERR_TAIL.test(self.out.textContent)) self.say('Xong. Đồng chí đọc lại trước khi dùng.');
+            if (!errTail(self.out.textContent)) self.say('Xong. Đồng chí đọc lại trước khi dùng.');
             finish();
             return null;
           }

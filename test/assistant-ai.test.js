@@ -364,3 +364,44 @@ test('runAi: tên máy (localhost) → kết nối tới IP đã kiểm tra, Hos
   await ai.runAi(db, user, { task: 'rut_gon', input: 'abc' }, () => {});
   assert.equal(fake.requests[0].headers.host, `127.0.0.1:${port}`);
 });
+
+test('runAi: signal hỏng không làm kẹt khóa (chạy lại được ngay)', async (t) => {
+  const fake = await startFakeOllama({ chunks: ['ok'] });
+  t.after(() => fake.close());
+  const { db, user } = setup(fake.url);
+  await assert.rejects(ai.runAi(db, user, { task: 'rut_gon', input: 'abc' }, () => {}, 'khong-phai-signal'), AppError);
+  const got = [];
+  await ai.runAi(db, user, { task: 'rut_gon', input: 'abc' }, (c) => got.push(c));
+  assert.deepEqual(got, ['ok']);
+});
+
+test('runAi: 200 nhưng không phải NDJSON → "dữ liệu không hợp lệ"', async (t) => {
+  const fake = await startFakeOllama({ chunks: [], badLines: ['<html>không phải json</html>'], noDone: true });
+  t.after(() => fake.close());
+  const { db, user } = setup(fake.url);
+  await assert.rejects(ai.runAi(db, user, { task: 'rut_gon', input: 'abc' }, () => {}), /Máy AI trả về dữ liệu không hợp lệ/);
+});
+
+test('checkConnection: phản hồi không phải JSON và hết giờ có thông báo riêng', async (t) => {
+  const http = require('node:http');
+  const server = http.createServer((req, res) => {
+    if (req.headers['x-hang']) return;
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end('<html>không phải json</html>');
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const { db } = setup(`http://127.0.0.1:${server.address().port}`);
+  const r = await ai.checkConnection(db);
+  assert.equal(r.ok, false);
+  assert.match(r.error, /Máy AI trả về dữ liệu không hợp lệ/);
+
+  const hang = http.createServer(() => {});
+  await new Promise((rs) => hang.listen(0, '127.0.0.1', rs));
+  t.after(() => { hang.closeAllConnections(); hang.close(); });
+  const { db: db2 } = setup(`http://127.0.0.1:${hang.address().port}`);
+  setSetting(db2, 'ai_timeout_s', 1);
+  const r2 = await ai.checkConnection(db2);
+  assert.equal(r2.ok, false);
+  assert.match(r2.error, /trong thời gian chờ/);
+});

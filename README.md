@@ -196,13 +196,13 @@ Văn bản không bao giờ chứa dữ liệu tư tưởng hay ghi chú hoàn c
 
 Mục **Trợ lý** (menu bên trái) gồm ba thẻ. Quản trị viên và Quản lý thấy cả ba; chiến sĩ chỉ thấy **Hỏi đáp**. Giao việc nhanh, Hỏi đáp và Dàn ý chạy hoàn toàn bằng quy tắc trong ứng dụng, **không cần AI**.
 
-### Giao việc nhanh (thẻ "Giao việc bằng lời")
+### Giao việc nhanh
 
 Đồng chí gõ một câu như nói chuyện, ví dụ:
 
-- `giao đ/c Bình soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp`
+- `giao đ/c Bảo soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp`
 - `Bảo và Cường dọn dẹp phòng truyền thống trước ngày 20/12`
-- `nhắc đồng chí Hải nộp danh sách đảng viên vào cuối tháng, hỏa tốc`
+- `nhắc đồng chí Hải nộp danh sách đảng viên vào cuối tháng, hỏa tốc` (nếu có nhiều người tên Hải, trợ lý hỏi chọn đúng người)
 
 Trợ lý nhận ra: **người thực hiện** (theo họ tên, tên gọi hoặc hai từ cuối; nhiều người nối bằng "và", "cùng", dấu phẩy), **hạn** (ngày cụ thể như `20/12`, hôm nay, ngày mai, thứ trong tuần này/tuần sau, cuối tuần, cuối tháng, sau N ngày...), **mức ưu tiên** (thường, gấp, hỏa tốc) và **lĩnh vực** (theo từ khóa trong câu). Phần còn lại thành tiêu đề. Nếu một tên trùng nhiều người, trợ lý hiện trang **Chọn đúng người**; tên không tìm thấy được ghi chú trên phiếu.
 
@@ -212,10 +212,10 @@ Kết quả được **điền sẵn vào phiếu giao việc**; đồng chí **
 
 Gõ câu hỏi hoặc bấm câu gợi ý. Trợ lý chỉ trả lời từ dữ liệu trong ứng dụng, không bịa.
 
-| Vai trò | Câu hỏi hỗ trợ |
+| Vai trò | Câu hỏi mẫu |
 |---|---|
-| Mọi người | việc nào quá hạn; việc của tôi; việc đến hạn hôm nay / tuần này / 7 ngày tới; tình hình tuần này |
-| Quản lý, quản trị viên | thêm: việc của một người (ví dụ "việc của Bảo"); ai đang quá tải; ai nghỉ phép/tranh thủ; ai sắp chuyển Đảng chính thức; ai sắp hết hạn phục vụ; ai đến niên hạn xét thăng quân hàm; số đảng viên/đoàn viên; danh sách quân số theo đơn vị |
+| Mọi người | `việc nào quá hạn`; `việc của tôi`; `việc đến hạn hôm nay`; `việc đến hạn tuần này`; `việc đến hạn 7 ngày tới`; `tình hình tuần này` |
+| Quản lý, quản trị viên (thêm) | `việc của Bảo`; `ai đang quá tải`; `ai đang nghỉ phép hôm nay`; `ai sắp chuyển Đảng chính thức`; `ai sắp hết hạn phục vụ`; `ai đến niên hạn xét thăng quân hàm`; `bao nhiêu đảng viên`; `danh sách quân số trung đội 1` |
 
 Chiến sĩ chỉ hỏi được về việc của chính mình. **Trợ lý không bao giờ trả lời về tư tưởng, hoàn cảnh khó khăn** (kể cả với quản lý); các nội dung này chỉ xem trong hồ sơ quân nhân.
 

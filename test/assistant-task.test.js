@@ -132,3 +132,37 @@ test('dấu câu cuối được dọn, từ dẫn ở cuối câu không gây l
   // "giao" không kèm người thì giữ nguyên trong tiêu đề.
   assert.equal(parseTaskSentence(db, 'giao nhiệm vụ huấn luyện', TODAY).title, 'Giao nhiệm vụ huấn luyện');
 });
+
+test('danh sách tên trần ở đầu câu: nhận khi mọi cụm khớp và còn cụm động từ', () => {
+  const { db, ids } = setup();
+  const r = parseTaskSentence(db, 'Hùng và Hải dọn dẹp phòng truyền thống trước ngày 20/12', TODAY);
+  assert.deepEqual(r.assignees.map((a) => a.id), [ids.hung, ids.hai]);
+  assert.equal(r.title, 'Dọn dẹp phòng truyền thống');
+  assert.equal(r.due_date, '2026-12-20');
+  const amb = parseTaskSentence(db, 'Hùng, An soạn kế hoạch', TODAY);
+  assert.deepEqual(amb.assignees.map((a) => a.id), [ids.hung]);
+  assert.equal(amb.ambiguous.length, 1);
+  assert.equal(amb.title, 'Soạn kế hoạch');
+});
+
+test('danh sách tên trần: câu thường không bị hiểu thành người', () => {
+  const { db } = setup();
+  db.prepare("INSERT INTO users (username, password_hash, full_name, role, active) VALUES ('bao', 'x', 'Trần Bảo', 'member', 1)").run();
+  for (const t of ['Báo cáo tình hình tuần này', 'Hùng', 'Hùng và', 'Hùng và dọn dẹp', 'Hùng và Xyz làm việc']) {
+    const r = parseTaskSentence(db, t, TODAY);
+    assert.deepEqual(r.assignees, [], t);
+    assert.deepEqual(r.ambiguous, [], t);
+  }
+  assert.equal(parseTaskSentence(db, 'Báo cáo tình hình tuần này', TODAY).title, 'Báo cáo tình hình tuần này');
+});
+
+test('tiêu đề: bỏ giới từ thừa sau khi cắt ngày và bỏ động từ nhắc ở đầu khi có người', () => {
+  const { db, ids } = setup();
+  const r = parseTaskSentence(db, 'nhắc đồng chí Hùng nộp danh sách đảng viên vào cuối tháng', TODAY);
+  assert.deepEqual(r.assignees.map((a) => a.id), [ids.hung]);
+  assert.equal(r.title, 'Nộp danh sách đảng viên');
+  assert.equal(parseTaskSentence(db, 'Nộp danh sách đảng viên chậm nhất ngày mai', TODAY).title, 'Nộp danh sách đảng viên');
+  assert.equal(parseTaskSentence(db, 'yêu cầu đ/c Hùng báo cáo trước thứ Sáu', TODAY).title, 'Báo cáo');
+  // không có người → giữ nguyên động từ
+  assert.equal(parseTaskSentence(db, 'nhắc nộp báo cáo vào cuối tháng', TODAY).title, 'Nhắc nộp báo cáo');
+});
