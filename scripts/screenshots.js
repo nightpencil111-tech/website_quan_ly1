@@ -6,6 +6,7 @@ const path = require('node:path');
 const { createApp } = require('../src/server');
 const { fillDemo, PASSWORD } = require('./demo-data');
 const ExcelJS = require('exceljs');
+const { startFakeOllama } = require('../test/helpers-ollama');
 
 const OUT = path.join(__dirname, '..', 'screenshots');
 const DESKTOP = { width: 1366, height: 900 };
@@ -21,6 +22,15 @@ async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qlctv-'));
   const { app, db } = createApp({ dbPath: path.join(tmp, 'shots.db') });
   fillDemo(db);
+  // Máy Ollama giả (chỉ dùng để chụp ảnh) với nội dung kế hoạch hư cấu.
+  const fake = await startFakeOllama({
+    models: ['qwen2.5:3b'],
+    chunks: ['1. Mục đích, yêu cầu\n', 'Nâng cao nhận thức chính trị, củng cố tinh thần đoàn kết trong đơn vị.\n', '2. Nội dung, hình thức\n', 'Sinh hoạt vào sáng thứ Bảy hằng tuần, mỗi buổi 90 phút.\n', '3. Tổ chức thực hiện\n', 'Các trung đội chủ động xây dựng kế hoạch chi tiết và báo cáo kết quả.'],
+  });
+  const setSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+  setSetting.run('ai_enabled', '1');
+  setSetting.run('ai_url', fake.url);
+  setSetting.run('ai_model', 'qwen2.5:3b');
   const server = await new Promise((res) => { const s = app.listen(0, '127.0.0.1', () => res(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch();
@@ -60,6 +70,19 @@ async function main() {
     await shot('06-admin-thong-tin-don-vi', '/admin/settings', {
       prepare: async () => { await page.locator('form[action="/admin/settings/unit-info"]').scrollIntoViewIfNeeded(); },
     });
+  });
+
+  await session('admin', async (shot, page) => {
+    await shot('07-admin-cai-dat-tro-ly-ai', '/admin/settings', {
+      prepare: async () => {
+        await page.click('#ai-check');
+        await page.waitForFunction(() => /Kết nối được/.test(document.getElementById('ai-check-out').textContent), null, { timeout: 8000 })
+          .catch(() => fail('cài đặt AI: Kiểm tra kết nối không báo kết nối được'));
+        await page.evaluate(() => window.scrollTo(0, 0));
+      },
+    });
+    const t = await page.locator('#ai-check-out').innerText();
+    if (/qwen2\.5:3b/.test(t)) pass('cài đặt AI: Kiểm tra kết nối liệt kê mô hình'); else fail('cài đặt AI: không thấy tên mô hình (' + t + ')');
   });
 
   await session('ctv', async (shot, page) => {
@@ -187,6 +210,62 @@ d.save(sys.argv[1])`, docxPath]);
     await shot('44-ctv-danh-muc-o-trong', '/documents/fields');
   });
 
+  // Trợ lý (Phần 4)
+  await session('ctv', async (shot, page) => {
+    const sentence = 'giao đ/c Bảo soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp';
+    await shot('50-ctv-tro-ly-giao-viec', '/assistant?tab=giao-viec', {
+      prepare: async () => { await page.fill('textarea[name="text"]', sentence); },
+    });
+    await Promise.all([page.waitForURL(/\/tasks\/new\?/, { timeout: 8000 }), page.click('form[action="/assistant/task"] button[type="submit"]')])
+      .catch(() => fail('giao việc nhanh: không chuyển sang form giao việc'));
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(OUT, '52-ctv-giao-viec-dien-san.png'), fullPage: true });
+    const checked = await page.locator('input[name="assignee_ids"]:checked').count();
+    const titleVal = await page.inputValue('input[name="title"]');
+    if (checked >= 1 && titleVal) pass('giao việc nhanh: form /tasks/new có người thực hiện được tích sẵn và tiêu đề điền sẵn');
+    else fail(`giao việc nhanh: form chưa điền sẵn (người tích: ${checked}, tiêu đề: "${titleVal}")`);
+
+    // Câu có tên trùng nhiều người -> trang chọn đúng người
+    await page.goto(base + '/assistant?tab=giao-viec');
+    await page.fill('textarea[name="text"]', 'giao đ/c Hải chuẩn bị buổi sinh hoạt trước thứ Sáu tuần sau');
+    await page.click('form[action="/assistant/task"] button[type="submit"]');
+    await page.waitForLoadState();
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: path.join(OUT, '51-ctv-tro-ly-chon-nguoi.png'), fullPage: true });
+    if (await page.locator('input[type="radio"][name="pick_0"]').count() >= 2) pass('giao việc nhanh: tên trùng hiện trang chọn đúng người');
+    else fail('giao việc nhanh: không thấy trang chọn người cho tên trùng');
+
+    await shot('53-ctv-tro-ly-hoi-dap', '/assistant?tab=hoi-dap', {
+      prepare: async () => {
+        await page.fill('input[name="q"]', 'việc nào quá hạn');
+        await Promise.all([page.waitForNavigation(), page.click('form[action="/assistant/ask"] button[type="submit"]')]);
+      },
+    });
+    if (await page.locator('table').count() >= 1) pass('hỏi đáp: có bảng kết quả'); else fail('hỏi đáp: không có bảng kết quả');
+
+    await shot('54-ctv-tro-ly-soan-thao', '/assistant?tab=soan-thao', {
+      prepare: async () => {
+        await page.click('#ol-btn');
+        await page.waitForFunction(() => document.getElementById('ai-input').value.length > 10, null, { timeout: 5000 });
+        await page.click('#ai-run');
+        await page.waitForFunction(() => /Xong/.test(document.querySelector('[data-role="status"]').textContent), null, { timeout: 15000 })
+          .catch(() => fail('AI soạn thảo: không chạy xong'));
+      },
+    });
+    const aiOut = await page.locator('[data-role="out"]').first().innerText();
+    if (aiOut.includes('Nâng cao nhận thức chính trị')) pass('AI soạn thảo: kết quả chứa nội dung của máy AI giả');
+    else fail('AI soạn thảo: kết quả không chứa nội dung mong đợi');
+
+    const tidKh = db.prepare("SELECT id FROM doc_templates WHERE builtin_key = 'ke_hoach'").get().id;
+    await shot('55-ctv-van-ban-nut-ai', `/documents/${tidKh}/generate`, {
+      prepare: async () => {
+        await page.click('[data-role="ol-btn"]');
+        await page.waitForFunction(() => document.querySelector('textarea[name="manual[noi_dung]"]').value.length > 10, null, { timeout: 5000 })
+          .catch(() => fail('form văn bản: Chèn dàn ý không điền vào ô nội dung'));
+      },
+    });
+  });
+
   await session('cs01', async (shot, page) => {
     await shot('20-cs-viec-cua-toi', '/my');
     await shot('21-cs-viec-cua-toi-dien-thoai', '/my', { size: MOBILE });
@@ -198,12 +277,17 @@ d.save(sys.argv[1])`, docxPath]);
       await page.goto(base + '/my-profile?tab=' + tab);
       mine += '\n' + await page.locator('body').innerText();
     }
+    await shot('56-cs-tro-ly', '/assistant');
+    const tabsText = await page.locator('nav.tabs').innerText();
+    if (/Hỏi đáp/.test(tabsText) && !/Giao việc/.test(tabsText) && !/Soạn thảo/.test(tabsText)) pass('Trợ lý (cs01): chỉ có tab Hỏi đáp, không có Giao việc/Soạn thảo');
+    else fail('Trợ lý (cs01): hiện tab không đúng: ' + tabsText);
     const leaks = ['Tư tưởng', 'GHI CHÚ TƯ TƯỞNG CỦA AN', 'GHI CHÚ HOÀN CẢNH CỦA AN'].filter((t) => mine.includes(t));
     if (leaks.length === 0) pass('Hồ sơ của tôi (cs01): không có dữ liệu tư tưởng/hoàn cảnh khó khăn');
     else fail('Hồ sơ của tôi (cs01) lộ dữ liệu nhạy cảm: ' + leaks.join(', '));
   });
 
   await browser.close();
+  await fake.close();
   await new Promise((r) => server.close(r));
   db.close();
   fs.rmSync(tmp, { recursive: true, force: true });

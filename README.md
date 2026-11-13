@@ -50,6 +50,8 @@ Lệnh này từ chối chạy nếu cơ sở dữ liệu không phải bản m�
 $env:DB_PATH = "data\demo.db"; npm run demo; npm start
 ```
 
+Dữ liệu thử để **Trợ lý AI tắt** (`ai_enabled = 0`); muốn thử phần AI, bật theo mục 13. Các chức năng giao việc nhanh, hỏi đáp và dàn ý không cần AI.
+
 Công cụ chụp ảnh `npm run screenshots` chỉ dành cho lập trình viên và cần cài Playwright riêng (không nằm trong thư viện bắt buộc):
 
 ```powershell
@@ -92,6 +94,7 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 - Bảng tổng quan, báo cáo kết quả theo kỳ (sao chép/xuất Excel), thống kê hiệu suất, xuất danh sách việc ra Excel.
 - Hồ sơ quân nhân: lý lịch, gia đình, quá trình công tác, khen thưởng/kỷ luật, nghỉ phép, theo dõi tư tưởng; nhắc mốc (chuyển Đảng chính thức, hết hạn phục vụ, niên hạn thăng quân hàm); nhập/xuất Excel (xem mục 11).
 - Văn bản Word: tạo kế hoạch, báo cáo, danh sách quân nhân/đảng viên từ mẫu có sẵn hoặc mẫu riêng, tự điền thông tin đơn vị và hồ sơ quân nhân (xem mục 12).
+- Trợ lý: giao việc bằng một câu nói thường, hỏi đáp về công việc/quân số, dàn ý văn bản và (tùy chọn) AI chạy cục bộ hỗ trợ viết nháp (xem mục 13).
 - Quản trị tài khoản, đơn vị, nhật ký thao tác, sao lưu.
 
 ## 10. Lộ trình
@@ -99,7 +102,9 @@ Tạo tệp `start.bat` trong thư mục ứng dụng với nội dung `cd /d C:
 - **Phần 1 (đã xong):** lõi hệ thống: tài khoản, giao việc, Kanban, lịch, báo cáo.
 - **Phần 2 (đã xong):** hồ sơ quân nhân, nhắc mốc, nhập/xuất Excel.
 - **Phần 3 (đã xong):** kho mẫu văn bản Word: mẫu dựng sẵn, tải mẫu riêng, tự nhận dạng chỗ cần điền, tạo văn bản và danh sách từ hồ sơ.
-- **Phần 4:** trợ lý AI hỗ trợ soạn thảo (tiếp theo).
+- **Phần 4 (đã xong):** trợ lý: giao việc nhanh bằng câu nói, hỏi đáp, dàn ý văn bản, AI cục bộ (Ollama) hỗ trợ soạn thảo.
+
+Cả 4 phần đã hoàn thành.
 
 ## 11. Hồ sơ quân nhân
 
@@ -187,7 +192,71 @@ Văn bản không bao giờ chứa dữ liệu tư tưởng hay ghi chú hoàn c
 - Tải mẫu lên báo lỗi cú pháp: kiểm tra từng cặp ngoặc `{ }` và cặp `{#ds}` / `{/ds}`.
 - Mẫu dựng sẵn do tệp trong thư mục `templates/builtin` tạo ra; sau khi nâng cấp ứng dụng, dùng **Khôi phục mẫu gốc** để nhận bản mẫu mới nhất (sẽ mất chỉnh sửa của đồng chí trên mẫu đó).
 
-## 13. Xử lý sự cố
+## 13. Trợ lý
+
+Mục **Trợ lý** (menu bên trái) gồm ba thẻ. Quản trị viên và Quản lý thấy cả ba; chiến sĩ chỉ thấy **Hỏi đáp**. Giao việc nhanh, Hỏi đáp và Dàn ý chạy hoàn toàn bằng quy tắc trong ứng dụng, **không cần AI**.
+
+### Giao việc nhanh (thẻ "Giao việc bằng lời")
+
+Đồng chí gõ một câu như nói chuyện, ví dụ:
+
+- `giao đ/c Bình soạn báo cáo chi bộ trước thứ Sáu tuần sau, gấp`
+- `Bảo và Cường dọn dẹp phòng truyền thống trước ngày 20/12`
+- `nhắc đồng chí Hải nộp danh sách đảng viên vào cuối tháng, hỏa tốc`
+
+Trợ lý nhận ra: **người thực hiện** (theo họ tên, tên gọi hoặc hai từ cuối; nhiều người nối bằng "và", "cùng", dấu phẩy), **hạn** (ngày cụ thể như `20/12`, hôm nay, ngày mai, thứ trong tuần này/tuần sau, cuối tuần, cuối tháng, sau N ngày...), **mức ưu tiên** (thường, gấp, hỏa tốc) và **lĩnh vực** (theo từ khóa trong câu). Phần còn lại thành tiêu đề. Nếu một tên trùng nhiều người, trợ lý hiện trang **Chọn đúng người**; tên không tìm thấy được ghi chú trên phiếu.
+
+Kết quả được **điền sẵn vào phiếu giao việc**; đồng chí **luôn đọc lại và sửa trước khi bấm Lưu**, trợ lý không tự giao việc.
+
+### Hỏi đáp
+
+Gõ câu hỏi hoặc bấm câu gợi ý. Trợ lý chỉ trả lời từ dữ liệu trong ứng dụng, không bịa.
+
+| Vai trò | Câu hỏi hỗ trợ |
+|---|---|
+| Mọi người | việc nào quá hạn; việc của tôi; việc đến hạn hôm nay / tuần này / 7 ngày tới; tình hình tuần này |
+| Quản lý, quản trị viên | thêm: việc của một người (ví dụ "việc của Bảo"); ai đang quá tải; ai nghỉ phép/tranh thủ; ai sắp chuyển Đảng chính thức; ai sắp hết hạn phục vụ; ai đến niên hạn xét thăng quân hàm; số đảng viên/đoàn viên; danh sách quân số theo đơn vị |
+
+Chiến sĩ chỉ hỏi được về việc của chính mình. **Trợ lý không bao giờ trả lời về tư tưởng, hoàn cảnh khó khăn** (kể cả với quản lý); các nội dung này chỉ xem trong hồ sơ quân nhân.
+
+### Dàn ý
+
+Ở thẻ **Soạn thảo** (và ngay trong form tạo văn bản), chọn loại rồi bấm **Chèn dàn ý** để có khung văn bản có sẵn: **Kế hoạch**, **Báo cáo**, **Báo cáo tuần**, **Biên bản sinh hoạt** (báo cáo tuần và biên bản tự lấy số liệu việc/quân số trong ứng dụng); có thể nhập chủ đề. Nếu ô đã có chữ, hệ thống hỏi trước khi thay.
+
+### Trợ lý AI (tùy chọn)
+
+AI dùng để viết nội dung từ dàn ý, sửa chính tả, chỉnh văn phong quân đội, rút gọn, viết lại. AI chạy bằng phần mềm **Ollama** ngay trên máy của đơn vị.
+
+**Cài trên chính máy chạy ứng dụng (Windows):**
+
+1. Tải Ollama từ **ollama.com**, chạy tệp cài đặt.
+2. Mở PowerShell và tải mô hình (cần Internet một lần):
+   ```powershell
+   ollama pull qwen2.5:3b
+   ```
+3. Vào **Quản trị → Cài đặt → Trợ lý AI**: tích **Bật Trợ lý AI**, giữ địa chỉ `http://127.0.0.1:11434`, mô hình `qwen2.5:3b`, bấm **Lưu cài đặt Trợ lý AI**, rồi bấm **Kiểm tra kết nối** (phải liệt kê được mô hình `qwen2.5:3b`).
+
+**Máy 8GB RAM:** mỗi câu trả lời có thể mất **30–90 giây**. Nên đóng bớt ứng dụng khác khi chạy AI; nếu hay báo hết thời gian chờ, tăng "Thời gian chờ" trong Cài đặt. Một lúc chỉ chạy một yêu cầu AI.
+
+**Dùng máy khác mạnh hơn trong mạng nội bộ:**
+
+1. Trên máy đó cài Ollama và `ollama pull` mô hình như trên.
+2. Đặt biến môi trường `OLLAMA_HOST=0.0.0.0` (System Properties → Advanced → Environment Variables → New, hoặc gõ "Edit the system environment variables"), rồi thoát và mở lại Ollama.
+3. Mở cổng 11434 vào máy đó, PowerShell quyền Administrator:
+   ```powershell
+   New-NetFirewallRule -DisplayName "Ollama 11434" -Direction Inbound -Protocol TCP -LocalPort 11434 -Action Allow
+   ```
+4. Ở **Cài đặt → Trợ lý AI** nhập `http://<IP>:11434` (dùng **địa chỉ IP**, ví dụ `http://192.168.1.50:11434`, không dùng tên có dấu chấm; địa chỉ ngoài mạng nội bộ bị từ chối), lưu rồi **Kiểm tra kết nối**.
+
+**Riêng tư và lưu ý:**
+
+- AI chỉ chạy trên máy của đơn vị. Chỉ **đoạn chữ đồng chí gõ vào** được gửi cho AI; AI không đọc hồ sơ quân nhân, không gửi gì ra Internet.
+- Kết quả AI **có thể sai hoặc bịa số liệu**; luôn đọc lại, sửa trước khi dùng. Đây chỉ là bản nháp hỗ trợ.
+- **Không dán nội dung có độ mật** vào ô soạn thảo.
+- Có thể dán vài đoạn văn bản mẫu của đơn vị ở Cài đặt → Trợ lý AI để AI viết theo văn phong đó.
+- Mỗi lần chạy AI được ghi vào Nhật ký (không lưu nội dung).
+
+## 14. Xử lý sự cố
 
 - **Cổng 3000 đang được dùng** (`EADDRINUSE`): chọn cổng khác, ví dụ `$env:PORT = 8080; npm start`, rồi mở cổng đó trong tường lửa.
 - **Báo phiên bản Node quá cũ** hoặc lỗi `node:sqlite`: kiểm tra `node -v`, cài lại Node.js 22 LTS (≥ 22.13).
