@@ -286,6 +286,66 @@ d.save(sys.argv[1])`, docxPath]);
     else fail('Hồ sơ của tôi (cs01) lộ dữ liệu nhạy cảm: ' + leaks.join(', '));
   });
 
+
+  // Chế độ Internet giả lập (Phần 5): CSP bật, bắt buộc xác thực 2 lớp cho ctv (quản lý). Máy chủ thứ hai, CSDL tạm riêng.
+  {
+    const totp = require('../src/services/totp');
+    const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'qlctv-net-'));
+    const net = createApp({ dbPath: path.join(tmp2, 'net.db'), config: { mode: 'internet', publicUrl: 'https://demo.example.ts.net' } });
+    fillDemo(net.db);
+    const srv2 = await new Promise((res) => { const s = net.app.listen(0, '127.0.0.1', () => res(s)); });
+    const base2 = `http://127.0.0.1:${srv2.address().port}`;
+    const ctx = await browser.newContext({ viewport: DESKTOP, deviceScaleFactor: 1, locale: 'vi-VN' });
+    const page = await ctx.newPage();
+    const problems = [];
+    page.on('console', (m) => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
+    page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
+    const snap = async (name) => { await page.waitForTimeout(300); await page.screenshot({ path: path.join(OUT, name + '.png'), fullPage: true }); };
+    const check = (cond, msg) => (cond ? pass(msg) : fail(msg));
+    try {
+      await page.goto(base2 + '/login');
+      await page.fill('input[name="username"]', 'ctv');
+      await page.fill('input[name="password"]', PASSWORD);
+      await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]')]);
+      check(/\/2fa\/setup/.test(page.url()), 'chế độ Internet: đăng nhập ctv bị chuyển sang /2fa/setup (bắt buộc 2 lớp)');
+      await snap('60-internet-bat-2-lop');
+      const key = (await page.locator('code.totp-key').innerText()).replace(/\s+/g, '');
+      const step = Math.floor(Date.now() / totp.PERIOD_MS);
+      await page.fill('input[name="code"]', totp.totpAt(key, step));
+      await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]')]);
+      check(await page.locator('.twofa-codes li').count() === 10, 'chế độ Internet: bật 2 lớp thành công, hiện 10 mã dự phòng');
+      await snap('61-internet-ma-du-phong');
+      await page.check('input[name="saved"]');
+      await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]')]);
+      await page.goto(base2 + '/');
+      check(new URL(page.url()).pathname === '/', 'chế độ Internet: vào được trang tổng quan sau khi bật 2 lớp');
+      await page.goto(base2 + '/account/security');
+      await snap('62-internet-bao-mat-tai-khoan');
+      check(await page.locator('body').innerText().then((t) => /Bảo mật/.test(t)), 'chế độ Internet: trang Bảo mật tài khoản hiển thị');
+      await page.goto(base2 + '/logout').catch(() => {});
+      if (!/\/login/.test(page.url())) await page.goto(base2 + '/login');
+      await page.fill('input[name="username"]', 'ctv');
+      await page.fill('input[name="password"]', PASSWORD);
+      await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]')]);
+      check(/\/2fa\/verify/.test(page.url()), 'chế độ Internet: đăng nhập lại chuyển sang /2fa/verify');
+      await snap('63-internet-nhap-ma');
+      // Mã của bước kế tiếp (mã bước đã dùng khi bật bị từ chối để chống dùng lại)
+      await page.fill('input[name="code"]', totp.totpAt(key, step + 1));
+      await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]:has-text("Xác nhận")')]);
+      check(new URL(page.url()).pathname === '/', 'chế độ Internet: nhập mã đúng vào được trang tổng quan');
+      const csp = problems.filter((x) => /Content Security Policy|CSP|Refused/i.test(x));
+      check(csp.length === 0, 'chế độ Internet: không có lỗi CSP trong console' + (csp.length ? ': ' + csp.join('; ') : ''));
+      problems.filter((x) => !csp.includes(x)).forEach((x) => fail('[internet] ' + x));
+    } catch (e) {
+      fail('chế độ Internet: ' + e.message);
+    } finally {
+      await ctx.close();
+      await new Promise((r) => srv2.close(r));
+      net.db.close();
+      fs.rmSync(tmp2, { recursive: true, force: true });
+    }
+  }
+
   await browser.close();
   await fake.close();
   await new Promise((r) => server.close(r));

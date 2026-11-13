@@ -81,7 +81,7 @@ Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.confi
 
 ## 7. Lưu ý bảo mật
 
-- Chỉ dùng trong mạng nội bộ; không mở cổng ra Internet.
+- Mặc định chỉ dùng trong mạng nội bộ. Muốn truy cập từ ngoài Internet phải làm đúng mục 15 (có xác thực 2 lớp, HTTPS) và được chỉ huy cho phép; không tự mở cổng router.
 - **Không nhập thông tin mật** (tài liệu, nội dung có độ mật) vào hệ thống.
 - Đổi mật khẩu mặc định ngay; đăng nhập sai 5 lần sẽ bị khóa 15 phút; phiên làm việc hết hạn sau 8 giờ không hoạt động.
 - Tuân thủ quy định của đơn vị về quản lý, sử dụng máy tính và dữ liệu.
@@ -105,6 +105,7 @@ Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.confi
 - Văn bản Word: tạo kế hoạch, báo cáo, danh sách quân nhân/đảng viên từ mẫu có sẵn hoặc mẫu riêng, tự điền thông tin đơn vị và hồ sơ quân nhân (xem mục 12).
 - Trợ lý: giao việc bằng một câu nói thường, hỏi đáp về công việc/quân số, dàn ý văn bản và (tùy chọn) AI chạy cục bộ hỗ trợ viết nháp (xem mục 13).
 - Quản trị tài khoản, đơn vị, nhật ký thao tác, sao lưu.
+- Truy cập qua Internet (tùy chọn): chế độ `internet` qua Tailscale Funnel, HTTPS, bắt buộc xác thực 2 lớp cho quản trị/quản lý, mã dự phòng, giới hạn đăng nhập sai theo địa chỉ IP (xem mục 15).
 
 ## 10. Lộ trình
 
@@ -113,7 +114,9 @@ Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.confi
 - **Phần 3 (đã xong):** kho mẫu văn bản Word: mẫu dựng sẵn, tải mẫu riêng, tự nhận dạng chỗ cần điền, tạo văn bản và danh sách từ hồ sơ.
 - **Phần 4 (đã xong):** trợ lý: giao việc nhanh bằng câu nói, hỏi đáp, dàn ý văn bản, AI cục bộ (Ollama) hỗ trợ soạn thảo.
 
-Cả 4 phần đã hoàn thành.
+- **Phần 5 (đã xong):** đưa lên Internet an toàn: chế độ `internet`, xác thực 2 lớp, kiểm tra khởi động, kịch bản Windows tự chạy và sao lưu, hướng dẫn Tailscale Funnel (mục 15).
+
+Cả 5 phần đã hoàn thành.
 
 ## 11. Hồ sơ quân nhân
 
@@ -272,3 +275,35 @@ AI dùng để viết nội dung từ dàn ý, sửa chính tả, chỉnh văn p
 - **Máy khác không vào được:** kiểm tra IP bằng `ipconfig`, hai máy cùng mạng, đã mở cổng tường lửa như mục 3.
 - **Quên mật khẩu:** quản trị viên bấm "Đặt lại mật khẩu" ở mục Tài khoản. Nếu quên mật khẩu admin duy nhất, liên hệ người cài đặt để khôi phục từ bản sao lưu.
 - Đặt đường dẫn dữ liệu khác bằng biến `DB_PATH`.
+
+## 15. Đưa lên Internet
+
+> **CẢNH BÁO QUAN TRỌNG.** Luật Bảo vệ bí mật nhà nước 2018 **cấm** lưu trữ tài liệu bí mật nhà nước trên máy tính có kết nối Internet. Trước khi làm các bước dưới đây, đồng chí **phải báo cáo và được sự đồng ý của chỉ huy đơn vị và cán bộ bảo mật**. Khi hệ thống mở ra Internet, **tuyệt đối không nhập bất kỳ nội dung có độ mật nào** (tài liệu, tư tưởng chi tiết, thông tin nhạy cảm). Nếu chưa được phép, chỉ dùng trong mạng nội bộ (mục 2 và 3).
+
+Cách làm: dùng **Tailscale Funnel** để cấp một địa chỉ `https://...ts.net` trỏ vào máy Surface đang chạy ứng dụng; không phải mở cổng trên router. Cần một tài khoản Google hoặc Microsoft để đăng nhập Tailscale.
+
+**Các bước (làm lần lượt):**
+
+1. **Đổi mật khẩu admin và bỏ dữ liệu thử.** Nếu từng chạy `npm run demo`: dừng ứng dụng (Ctrl+C hoặc `Stop-ScheduledTask QuanLyCTV-Web`), xóa thư mục `data`, chạy lại `npm start` để có cơ sở dữ liệu mới (rồi dừng). Đăng nhập `admin / admin123`, đổi mật khẩu. Ở chế độ Internet, kiểm tra khi khởi động sẽ **từ chối chạy** nếu còn tài khoản thử hoặc mật khẩu mặc định.
+2. **Tạo cấu hình.** Chép `quanly.config.example.json` thành `quanly.config.json`, mở bằng Notepad, sửa `"mode": "internet"` (giữ nguyên dấu nháy, dấu phẩy). Mục `publicUrl` điền ở bước 5.
+3. **Cài Tailscale cho Windows.** Tải tại https://tailscale.com/download, cài đặt, mở và đăng nhập bằng tài khoản Google hoặc Microsoft.
+4. **Bật HTTPS và Funnel cho máy.** Việc này làm trong trang quản trị Tailscale (đăng nhập tại tailscale.com bằng cùng tài khoản): bật chứng chỉ HTTPS cho mạng và cho phép Funnel với máy này. Nhà phát triển không truy cập được trang Tailscale khi soạn tài liệu nên **không ghi tên menu cụ thể** (giao diện có thể đổi); đồng chí làm **theo hướng dẫn trên trang tailscale.com/kb/1223/funnel**.
+5. **Bật Funnel.** Mở PowerShell, chạy:
+   ```powershell
+   tailscale funnel --bg 3000
+   ```
+   Lệnh in ra địa chỉ dạng `https://<tên-máy>.<tên-mạng>.ts.net`. Chép địa chỉ đó vào `publicUrl` trong `quanly.config.json`, ví dụ `"publicUrl": "https://surface.tail1234.ts.net"`. (Nếu đổi cổng thì thay `3000` bằng cổng đó.)
+6. **Cài tự chạy.** Mở PowerShell **bằng quyền Administrator**, vào thư mục ứng dụng, chạy `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. **Chạy lại lệnh này sau mỗi lần sửa `quanly.config.json`.**
+7. **Đăng nhập và bật 2 lớp.** Dùng điện thoại, **tắt Wi-Fi, dùng 4G**, mở địa chỉ công khai, đăng nhập `admin`. Hệ thống bắt buộc bật xác thực 2 lớp: cài Google Authenticator hoặc Microsoft Authenticator, quét mã QR, nhập mã 6 số, rồi **chép 10 mã dự phòng ra giấy** và cất kỹ.
+8. **Tạo tài khoản** cho cán bộ, chiến sĩ (Quản trị → Tài khoản) và gửi địa chỉ công khai cho họ. Tài khoản quản trị và quản lý sẽ phải bật 2 lớp ở lần đăng nhập đầu; chiến sĩ có thể tự bật ở **Bảo mật tài khoản**.
+9. **Kiểm tra địa chỉ IP thật.** Nhờ một người đăng nhập từ điện thoại, rồi vào **Quản trị → Nhật ký**, xem dòng đăng nhập: địa chỉ phải là IP của người đó, **không phải `127.0.0.1`**. Nếu mọi dòng đều là `127.0.0.1`: **tắt Funnel ngay (bước 10) và báo lại**, vì khi đó mọi người dùng chung một bộ đếm đăng nhập sai và chức năng chống dò mật khẩu không đúng.
+10. **Tắt Internet tạm thời:** `tailscale funnel --https=443 off` hoặc `tailscale funnel reset`. Bật lại: `tailscale funnel --bg 3000`. Xem trạng thái: `tailscale funnel status`.
+
+**Lưu ý:**
+
+- Ở chế độ Internet, mở `http://localhost:3000` ngay trên máy Surface có thể **không giữ được đăng nhập** (cookie yêu cầu HTTPS); hãy dùng địa chỉ công khai `https://...ts.net`.
+- Máy Surface **phải luôn bật và có mạng**. Vào Settings → System → Power, đặt "Sleep" thành **Never** khi cắm điện.
+- Ai biết mật khẩu một tài khoản có thể cố tình nhập sai mã 2 lớp để **khóa xác thực 2 lớp của tài khoản đó 15 phút** (gây phiền, không vào được hệ thống). Nếu nghi ngờ: đổi mật khẩu tài khoản, kiểm tra **Nhật ký**.
+- Mất điện thoại: quản trị viên bấm **Đặt lại xác thực 2 lớp** ở mục Tài khoản, người dùng bật lại ở lần đăng nhập kế. Quản trị viên mất điện thoại: dùng **mã dự phòng** (ô "Dùng mã dự phòng" ở trang nhập mã). Hết mã dự phòng thì khôi phục từ sao lưu.
+- **Khôi phục từ sao lưu:** gói `.zip` tải về chứa `data.db` và `secret.key`; sao lưu hằng ngày trong `backups\` là từng cặp `.db` + `.key`. Dừng tác vụ (`Stop-ScheduledTask QuanLyCTV-Web`), chép vào thư mục `data\` với tên `data.db` và `secret.key`, xóa `data.db-wal` và `data.db-shm` nếu có, rồi `Start-ScheduledTask QuanLyCTV-Web`. Bản sao lưu chứa khóa `secret.key`, nên cất như tài liệu quan trọng.
+- Các kịch bản Windows và lệnh Tailscale **chưa được nhà phát triển chạy thử trên Windows**. Nếu gặp lỗi, chụp màn hình thông báo và gửi lại để sửa.
