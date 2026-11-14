@@ -372,3 +372,64 @@ test('M13: đổi mật khẩu xóa các phiên khác của tài khoản, giữ 
   assert.equal(rb.headers.get('location'), '/login', 'phiên khác bị hủy');
   assert.equal(s.db.prepare('SELECT COUNT(*) c FROM sessions WHERE user_id = ?').get(otherUser).c, 1, 'tài khoản khác không bị ảnh hưởng');
 });
+
+// ---------- Rà soát lại: N1, N2, N5 ----------
+test('N1: admin còn mật khẩu dữ liệu thử Demo@1234 (npm run demo không bắt đổi) → kiểm tra khởi động chặn', () => {
+  const { fillDemo } = require('../scripts/demo-data');
+  const { startupProblems } = require('../src/startupCheck');
+  const db = makeDb();
+  fillDemo(db);
+  assert.equal(db.prepare("SELECT must_change_password m FROM users WHERE username='admin'").get().m, 0);
+  db.prepare("UPDATE users SET password_hash = ? WHERE username <> 'admin'").run(hashPassword('KhacDemo#2026'));
+  const p = startupProblems(db, INTERNET);
+  assert.equal(p.length, 1, p.join(' | '));
+  assert.match(p[0], /admin/);
+  assert.match(p[0], /Demo@1234/);
+  assert.match(p[0], /Đổi mật khẩu/);
+  db.prepare("UPDATE users SET password_hash = ? WHERE username = 'admin'").run(hashPassword('MatKhauManh#2026'));
+  assert.deepEqual(startupProblems(db, INTERNET), []);
+});
+
+test('N2: tên có thật và tên không tồn tại nhận cùng chuỗi thông báo qua 7 lần sai (kể cả thông báo khóa)', () => {
+  const db = makeDb();
+  seed(db);
+  const accountLimiter = createAccountIpLimiter();
+  const seq = (name) => Array.from({ length: 7 }, () => login(db, name, 'sai', { ip: '5.5.5.5', accountLimiter }).error);
+  const real = seq('admin');
+  const ghost = seq('khong-ton-tai');
+  assert.deepEqual(ghost, real);
+  assert.match(real[4], /Nhập sai quá 5 lần/);
+  assert.match(real[6], /đang bị khóa/);
+  // IP khác không bị ảnh hưởng với tên không tồn tại.
+  assert.doesNotMatch(login(db, 'khong-ton-tai', 'sai', { ip: '5.5.5.6', accountLimiter }).error, LOCK_RE);
+});
+
+test('N5: isLocalConsole cần Host loopback và không có X-Forwarded-Proto/Host', () => {
+  const { isLocalConsole } = require('../src/security');
+  const req = (headers, addr = '127.0.0.1', mode = 'internet') => ({
+    app: { locals: { config: { mode } } }, socket: { remoteAddress: addr }, headers,
+  });
+  for (const host of ['localhost', 'localhost:3000', '127.0.0.1:3000', '[::1]:3000', 'LOCALHOST']) {
+    assert.equal(isLocalConsole(req({ host })), true, host);
+  }
+  for (const host of ['may.tailnet.ts.net', 'may.tailnet.ts.net:443', '127.0.0.1.evil.com', '', '10.0.0.1:3000']) {
+    assert.equal(isLocalConsole(req({ host })), false, host);
+  }
+  assert.equal(isLocalConsole(req({ host: 'localhost' })), true);
+  assert.equal(isLocalConsole(req({ host: 'localhost', 'x-forwarded-proto': 'https' })), false);
+  assert.equal(isLocalConsole(req({ host: 'localhost', 'x-forwarded-host': 'may.tailnet.ts.net' })), false);
+  assert.equal(isLocalConsole(req({ host: 'localhost', 'x-forwarded-for': '1.2.3.4' })), false);
+  assert.equal(isLocalConsole(req({ host: 'localhost' }, '10.0.0.2')), false);
+  assert.equal(isLocalConsole(req({ host: 'localhost' }, '127.0.0.1', 'noi_bo')), false);
+});
+
+test('N5 HTTP: yêu cầu loopback có X-Forwarded-Proto không được miễn khóa tài khoản', async (t) => {
+  const s = await startServer({ config: INTERNET });
+  t.after(() => s.close());
+  const proxied = { 'x-forwarded-proto': 'https' };
+  for (let i = 0; i < 5; i++) await postLogin(s.base, 'admin', 'sai', proxied);
+  let r = await postLogin(s.base, 'admin', 'admin123', proxied);
+  assert.match(r.text, /Tài khoản đang bị khóa/);
+  r = await postLogin(s.base, 'admin', 'admin123');
+  assert.equal(r.status, 302, 'tại máy chủ thật sự (Host 127.0.0.1) vẫn được miễn');
+});

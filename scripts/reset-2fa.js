@@ -49,6 +49,8 @@ if (require.main === module) {
   let db;
   try {
     db = require('../src/db').openDb(dbPath);
+    // Máy chủ có thể đang chạy và ghi CSDL: chờ tối đa 5 giây thay vì báo lỗi "database is locked".
+    db.exec('PRAGMA busy_timeout = 5000');
     const r = reset2fa(db, username);
     if (!r.ok) {
       console.error(r.message);

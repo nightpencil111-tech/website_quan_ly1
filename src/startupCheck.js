@@ -7,9 +7,12 @@ const DEMO_USERNAMES = ['ctv', ...Array.from({ length: 10 }, (_, i) => 'cs' + St
 function startupProblems(db, config) {
   if (!config || config.mode !== 'internet') return [];
   const problems = [];
-  const admin = db.prepare("SELECT must_change_password FROM users WHERE username = 'admin'").get();
+  const admin = db.prepare("SELECT must_change_password, password_hash FROM users WHERE username = 'admin'").get();
   if (admin && admin.must_change_password) {
     problems.push('Tài khoản admin vẫn dùng mật khẩu ban đầu: đồng chí đăng nhập ở chế độ nội bộ và đổi mật khẩu admin trước khi bật chế độ Internet.');
+  } else if (admin && verifyPassword(DEMO_PASSWORD, admin.password_hash)) {
+    // npm run demo đặt mật khẩu admin là Demo@1234 mà không bắt đổi → phải kiểm tra riêng.
+    problems.push(`Tài khoản admin vẫn dùng mật khẩu dữ liệu thử ${DEMO_PASSWORD}: đồng chí đăng nhập ở chế độ nội bộ, bấm "Đổi mật khẩu" ở góc trên và đổi mật khẩu admin trước khi bật chế độ Internet.`);
   }
   const ph = DEMO_USERNAMES.map(() => '?').join(', ');
   const demo = db.prepare(`SELECT username, password_hash FROM users WHERE username IN (${ph}) ORDER BY username`).all(...DEMO_USERNAMES)

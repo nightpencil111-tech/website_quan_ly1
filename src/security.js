@@ -64,17 +64,21 @@ function ipKey(ip) {
   return g.slice(0, 4).map((x) => parseInt(x, 16).toString(16)).join(':') + '::/64';
 }
 
+// Host của người ngồi tại máy chủ: localhost, 127.0.0.1 hoặc [::1], có thể kèm cổng.
+const LOOPBACK_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$/i;
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 // Người dùng ngồi ngay tại máy chủ (chế độ Internet): kết nối từ loopback và KHÔNG có tiêu đề chuyển tiếp của proxy
-// (Tailscale Funnel luôn thêm X-Forwarded-For). Dùng để miễn khóa tài khoản do kẻ khác nhập sai mật khẩu.
+// (Tailscale Funnel luôn thêm X-Forwarded-For), Host là địa chỉ loopback. Dùng để miễn khóa tài khoản do kẻ khác nhập sai mật khẩu.
 function isLocalConsole(req) {
   const config = req.app && req.app.locals && req.app.locals.config;
   if (!config || config.mode !== 'internet') return false;
   const addr = req.socket && req.socket.remoteAddress;
   if (!LOOPBACK.has(addr)) return false;
   const h = req.headers || {};
-  return h['x-forwarded-for'] === undefined && h.forwarded === undefined && h['tailscale-funnel-request'] === undefined;
+  if (!LOOPBACK_HOST.test(String(h.host || ''))) return false;
+  return ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'forwarded', 'tailscale-funnel-request']
+    .every((k) => h[k] === undefined);
 }
 
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'];

@@ -106,17 +106,27 @@ function login(db, username, password, opts = {}) {
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim());
   // Cùng một thông báo cho tên không tồn tại, sai mật khẩu, tài khoản vô hiệu hóa (không lộ tên đăng nhập).
   const bad = { ok: false, error: BAD_LOGIN };
-  if (!user) {
-    dummyVerify(password);
-    audit.log(db, null, 'login_fail', String(username || '').slice(0, 100), 'Tên đăng nhập không tồn tại', aopts);
-    return bad;
-  }
   const now = clock();
   const limiter = opts.accountLimiter || defaultAccountLimiter(db);
+  const lockedMsg = (ms) => `Tài khoản đang bị khóa do nhập sai nhiều lần, thử lại sau ${Math.max(1, Math.ceil(ms / 60000))} phút`;
+  const pairLockedMsg = `Nhập sai quá ${ACCOUNT_IP_MAX_FAILS} lần, tài khoản bị khóa 15 phút`;
+  if (!user) {
+    // Tên không tồn tại cũng được đếm theo (tên, IP) để thông báo khóa giống hệt tên có thật (không dò được tên).
+    const name = String(username || '').trim().slice(0, 100);
+    const ghostKey = accountIpKey('u:' + name, ip);
+    const gc = limiter.check(ghostKey);
+    if (gc.blocked) {
+      audit.log(db, null, 'login_fail', name, 'Tên đăng nhập không tồn tại (đang khóa với thiết bị này)', aopts);
+      return { ok: false, error: lockedMsg(gc.retryAfterMs) };
+    }
+    dummyVerify(password);
+    audit.log(db, null, 'login_fail', name, 'Tên đăng nhập không tồn tại', aopts);
+    if (limiter.fail(ghostKey).justBlocked) return { ok: false, error: pairLockedMsg };
+    return bad;
+  }
   const pairKey = accountIpKey(user.id, ip);
   const until = lockedUntilMs(user.locked_until);
   if (!opts.exemptLocks) {
-    const lockedMsg = (ms) => `Tài khoản đang bị khóa do nhập sai nhiều lần, thử lại sau ${Math.max(1, Math.ceil(ms / 60000))} phút`;
     if (until > now) {
       audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đang bị khóa tạm thời (sai mật khẩu nhiều lần từ nhiều nơi)', aopts);
       return { ok: false, error: lockedMsg(until - now) };
@@ -145,7 +155,7 @@ function login(db, username, password, opts = {}) {
     }
     if (pair.justBlocked) {
       audit.log(db, user.id, 'login_fail', user.username, `Sai mật khẩu ${ACCOUNT_IP_MAX_FAILS} lần, khóa tài khoản 15 phút với thiết bị này`, aopts);
-      return { ok: false, error: `Nhập sai quá ${ACCOUNT_IP_MAX_FAILS} lần, tài khoản bị khóa 15 phút` };
+      return { ok: false, error: pairLockedMsg };
     }
     audit.log(db, user.id, 'login_fail', user.username, 'Sai mật khẩu', aopts);
     return bad;

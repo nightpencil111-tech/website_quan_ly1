@@ -288,7 +288,7 @@ Cách làm: dùng **Tailscale Funnel** để cấp một địa chỉ `https://.
 
 1. **Chuẩn bị dữ liệu ở chế độ nội bộ** (chưa có `quanly.config.json`, hoặc `mode` là `noi_bo`):
    1. Khởi động ứng dụng (`npm start` hoặc nhấp đúp `scripts\windows\start.cmd`; nếu đã cài tự chạy ở mục 6 thì ứng dụng đang chạy sẵn).
-   2. **Trên chính máy Surface**, mở trình duyệt vào `http://localhost:3000`, đăng nhập `admin` (mật khẩu `admin123`, hoặc `Demo@1234` nếu từng chạy `npm run demo`) và **đổi mật khẩu** khi được yêu cầu.
+   2. **Trên chính máy Surface**, mở trình duyệt vào `http://localhost:3000`, đăng nhập `admin` (mật khẩu `admin123`, hoặc `Demo@1234` nếu từng chạy `npm run demo`) và **đổi mật khẩu**: với `admin123` hệ thống tự yêu cầu đổi; với `Demo@1234` thì bấm **Đổi mật khẩu** ở góc trên (với dữ liệu thử hệ thống không tự yêu cầu). Kiểm tra khi khởi động ở chế độ Internet sẽ từ chối chạy nếu `admin` còn mật khẩu `admin123` hoặc `Demo@1234`.
    3. Nếu từng chạy `npm run demo` trên dữ liệu này, phải bỏ dữ liệu thử (kiểm tra khi khởi động ở chế độ Internet sẽ **từ chối chạy** nếu còn tài khoản thử dùng mật khẩu `Demo@1234` hoặc `admin` chưa đổi mật khẩu):
       - **Chưa nhập dữ liệu thật nào:** vào **Quản trị → Sao lưu dữ liệu** tải một bản sao lưu cho chắc, dừng ứng dụng (mục "Dừng ứng dụng" dưới đây), **đổi tên** thư mục `data` thành `data-thu` (đổi tên, không xóa), khởi động lại để có cơ sở dữ liệu mới, rồi làm lại bước 1.2 với `admin / admin123`.
       - **Đã nhập dữ liệu thật:** **không** đổi tên hay xóa thư mục `data`. Vào **Quản trị → Tài khoản**, với từng tài khoản thử `ctv`, `cs01` … `cs10`: bấm **Đặt lại mật khẩu** (mật khẩu `Demo@1234` mất hiệu lực) rồi bấm **Khóa** ở tài khoản đó; xóa tay các công việc, hồ sơ hư cấu nếu không cần.
