@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { today } = require('../src/util/date');
+const { stripSessions } = require('../src/db');
 
 const APP_DIR = path.join(__dirname, '..');
 const NAME_RE = /^saoluu-\d{4}-\d{2}-\d{2}-\d{4}\.db$/;
@@ -27,6 +28,12 @@ function backup({ dbPath, dir, keep = 30, now = new Date() }) {
     db.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
   } finally {
     db.close();
+  }
+  try {
+    stripSessions(out);
+  } catch (e) {
+    fs.rmSync(out, { force: true });
+    throw e;
   }
   const keySrc = path.join(path.dirname(dbPath), 'secret.key');
   if (fs.existsSync(keySrc)) fs.copyFileSync(keySrc, path.join(dir, `${base}.key`));

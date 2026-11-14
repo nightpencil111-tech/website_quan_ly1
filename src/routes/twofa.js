@@ -71,7 +71,7 @@ module.exports = (db) => {
     const fails = (row.fails || 0) + 1;
     if (fails >= ACCOUNT_MAX_FAILS) {
       db.prepare('UPDATE user_totp SET fails = 0, locked_until = ? WHERE user_id = ?').run(clock(req) + ACCOUNT_LOCK_MS, who.id);
-      audit.log(db, who.id, 'totp_locked', who.username, `Nhập sai mã 2 lớp ${ACCOUNT_MAX_FAILS} lần, khóa xác thực 2 lớp 15 phút`);
+      audit.log(db, who.id, 'totp_locked', who.username, `Nhập sai mã 2 lớp ${ACCOUNT_MAX_FAILS} lần, khóa xác thực 2 lớp 15 phút`, ipOf(req));
       return true;
     }
     db.prepare('UPDATE user_totp SET fails = ? WHERE user_id = ?').run(fails, who.id);
@@ -79,6 +79,7 @@ module.exports = (db) => {
   }
   const accountOk = (who) => db.prepare('UPDATE user_totp SET fails = 0, locked_until = NULL WHERE user_id = ?').run(who.id);
   const noStore = (res) => res.set('Cache-Control', 'no-store');
+  const ipOf = (req) => ({ ip: req.ip || null });
 
   function destroySession(req, res) {
     if (req.sessionId) db.prepare('DELETE FROM sessions WHERE id = ?').run(req.sessionId);
@@ -109,18 +110,18 @@ module.exports = (db) => {
     const lim = req.app.locals.ipLimiter;
     const f = lim ? lim.fail(ip) : { blocked: false, justBlocked: false };
     if (f.justBlocked) {
-      audit.log(db, null, 'login_ip_blocked', ip, `Nhập sai mã xác thực 2 lớp/mật khẩu ${IP_MAX_FAILS} lần trong 15 phút, khóa thiết bị 15 phút`);
+      audit.log(db, null, 'login_ip_blocked', ip, `Nhập sai mã xác thực 2 lớp/mật khẩu ${IP_MAX_FAILS} lần trong 15 phút, khóa thiết bị 15 phút`, ipOf(req));
     }
     if (req.pending) {
       const fails = req.pending.fails + 1;
       if (fails >= auth.MFA_MAX_FAILS) {
-        audit.log(db, who.id, 'login_fail', who.username, `Nhập sai mã xác thực 2 lớp ${auth.MFA_MAX_FAILS} lần, hủy phiên đăng nhập`);
+        audit.log(db, who.id, 'login_fail', who.username, `Nhập sai mã xác thực 2 lớp ${auth.MFA_MAX_FAILS} lần, hủy phiên đăng nhập`, ipOf(req));
         if (f.blocked) return blockedResponse(req, res);
         destroySession(req, res);
         return res.redirect('/login?sai_ma=1');
       }
       db.prepare('UPDATE sessions SET mfa_fails = ? WHERE id = ?').run(fails, req.sessionId);
-      audit.log(db, who.id, 'login_fail', who.username, 'Sai mã xác thực 2 lớp');
+      audit.log(db, who.id, 'login_fail', who.username, 'Sai mã xác thực 2 lớp', ipOf(req));
     }
     if (f.blocked) return blockedResponse(req, res);
     return rerender(locked);
@@ -173,7 +174,7 @@ module.exports = (db) => {
         }
         return res.redirect('/account/security');
       }
-      audit.log(db, who.id, 'totp_enable', who.username, null);
+      audit.log(db, who.id, 'totp_enable', who.username, null, ipOf(req));
       if (req.pending) auth.completeMfa(db, req, res);
       else db.prepare('UPDATE sessions SET mfa_secret_enc = NULL WHERE id = ?').run(req.sessionId);
       showRecoveryCodes(res, codes, req.pending ? '/' : '/account/security');
@@ -218,6 +219,7 @@ module.exports = (db) => {
       return wrongCode(req, res, who, (locked) => renderVerify(res, locked ? LOCKED : WRONG_CODE, null, locked ? 429 : 200));
     }
     accountOk(who);
+    audit.log(db, who.id, 'login', who.username, 'Đúng mã xác thực 2 lớp', ipOf(req));
     auth.completeMfa(db, req, res);
     res.redirect('/');
   });
@@ -244,7 +246,7 @@ module.exports = (db) => {
         WHERE user_id = ? AND recovery_hashes = ?`
     ).run(JSON.stringify(hashes), who.id, row.recovery_hashes);
     if (ch.changes !== 1 || !used) return renderVerify(res, null, WRONG_RECOVERY);
-    audit.log(db, who.id, 'recovery_code_used', who.username, `Còn ${hashes.length} mã dự phòng`);
+    audit.log(db, who.id, 'recovery_code_used', who.username, `Còn ${hashes.length} mã dự phòng`, ipOf(req));
     auth.completeMfa(db, req, res);
     res.redirect('/');
   });
@@ -289,7 +291,7 @@ module.exports = (db) => {
     const step = checkCurrentCode(req, res);
     if (step === null) return;
     db.prepare('DELETE FROM user_totp WHERE user_id = ?').run(req.user.id);
-    audit.log(db, req.user.id, 'totp_disable', req.user.username, null);
+    audit.log(db, req.user.id, 'totp_disable', req.user.username, null, ipOf(req));
     res.redirect('/account/security');
   });
 
@@ -298,7 +300,7 @@ module.exports = (db) => {
     if (step === null) return;
     const codes = totp.makeRecoveryCodes();
     db.prepare('UPDATE user_totp SET recovery_hashes = ? WHERE user_id = ?').run(JSON.stringify(totp.hashRecoveryCodes(codes)), req.user.id);
-    audit.log(db, req.user.id, 'totp_recovery_regen', req.user.username, null);
+    audit.log(db, req.user.id, 'totp_recovery_regen', req.user.username, null, ipOf(req));
     showRecoveryCodes(res, codes, '/account/security');
   });
 

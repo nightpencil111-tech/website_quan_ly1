@@ -4,7 +4,7 @@ const express = require('express');
 const { openDb, seed } = require('./db');
 const auth = require('./auth');
 const { loadConfig, normalizeConfig } = require('./config');
-const { securityHeaders, createIpLimiter } = require('./security');
+const { securityHeaders, sameOriginGuard, createIpLimiter, createAccountIpLimiter } = require('./security');
 
 // config: cấu hình chạy (mặc định đọc từ biến môi trường + quanly.config.json); now: đồng hồ (để test giả lập thời gian).
 function createApp({ dbPath, config, now } = {}) {
@@ -14,6 +14,7 @@ function createApp({ dbPath, config, now } = {}) {
   app.disable('x-powered-by');
   app.locals.config = config;
   app.locals.ipLimiter = createIpLimiter(now ? { now } : {});
+  app.locals.accountLimiter = createAccountIpLimiter(now ? { now } : {});
   app.locals.now = now || Date.now;
   // Khóa mã hóa secret 2 lớp: <thư mục CSDL>/secret.key (CSDL trong bộ nhớ → khóa tạm).
   app.locals.totpKey = dbPath && dbPath !== ':memory:'
@@ -50,15 +51,27 @@ function createApp({ dbPath, config, now } = {}) {
     next();
   });
   app.use(express.static(path.join(__dirname, '..', 'public')));
-  // Tải tệp Excel nhập (base64 trong JSON) cần hạn mức lớn hơn; gắn trước parser chung (xác thực và CSRF vẫn chạy sau).
-  app.use('/soldiers/import/preview', express.json({ limit: '3mb' }));
-  // Tải mẫu Word (base64 trong JSON, tệp ≤ 5MB) cũng cần hạn mức lớn hơn.
-  app.use('/documents/templates/upload', express.json({ limit: '8mb' }));
-  app.use('/documents/templates/:id/file', express.json({ limit: '8mb' }));
+  // Chế độ Internet: chặn yêu cầu thay đổi dữ liệu từ trang khác (trước khi đọc thân yêu cầu).
+  app.use(sameOriginGuard(config));
+  // Phiên đọc từ cookie, không cần thân yêu cầu → chạy TRƯỚC các bộ đọc thân, để thân lớn chỉ được đọc khi đã đăng nhập.
+  app.use(auth.loadSession(db));
+  // Đường tải tệp lớn (base64 trong JSON): Excel nhập hồ sơ 3MB, mẫu Word 8MB. Chỉ chỉ huy/quản trị đã đăng nhập đầy đủ
+  // mới được gửi thân lớn; người khác bị trả 401 (chưa đăng nhập) / 403 (không đủ quyền) ngay, KHÔNG đọc thân (chống làm treo máy bằng yêu cầu ẩn danh).
+  const largeBodyGuard = (req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    if (req.user && ['admin', 'manager'].includes(req.user.role)) return next();
+    res.set('Connection', 'close');
+    if (req.user) return res.status(403).json({ error: 'Đồng chí không có quyền thực hiện chức năng này' });
+    return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ' });
+  };
+  for (const [p, limit] of [
+    ['/soldiers/import/preview', '3mb'],
+    ['/documents/templates/upload', '8mb'],
+    ['/documents/templates/:id/file', '8mb'],
+  ]) app.use(p, largeBodyGuard, express.json({ limit }));
+  app.use(auth.mfaGate);
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(express.json({ limit: '1mb' }));
-  app.use(auth.loadSession(db));
-  app.use(auth.mfaGate);
   app.use((req, res, next) => {
     res.locals.path = req.path;
     res.locals.flash = null;

@@ -18,7 +18,7 @@ test('migrate chạy hai lần không lỗi', () => {
   const db = makeDb();
   migrate(db);
   migrate(db);
-  assert.equal(db.prepare('SELECT COUNT(*) c FROM schema_version').get().c, 5);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM schema_version').get().c, 6);
 });
 
 test('seed hai lần chỉ có 1 admin', () => {

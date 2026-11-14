@@ -21,8 +21,13 @@ function verifyPassword(password, stored) {
 
 const audit = require('./services/audit');
 
-const MAX_FAILS = 5;
+const { createAccountIpLimiter, accountIpKey, ACCOUNT_IP_MAX_FAILS } = require('./security');
+
+// Khóa mật khẩu: 5 lần sai từ một IP → khóa tài khoản đó CHỈ với IP đó 15 phút (bộ nhớ, xem security.js);
+// thêm trần toàn cục: 30 lần sai từ mọi IP trong 15 phút → khóa tài khoản ở mọi nơi 15 phút (users.locked_until).
+const GLOBAL_MAX_FAILS = 30;
 const LOCK_MS = 15 * 60 * 1000;
+const BAD_LOGIN = 'Tên đăng nhập hoặc mật khẩu không đúng';
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const COOKIE_NAME = 'sid';
 // Xác thực 2 lớp: vai trò bắt buộc ở chế độ Internet; phiên "đã qua mật khẩu, chưa qua 2 lớp" sống tối đa 5 phút.
@@ -55,48 +60,107 @@ function lockedUntilMs(v) {
   return Number.isNaN(t) ? 0 : t;
 }
 
-// opts.config: cấu hình chạy (quyết định có bắt buộc 2 lớp); opts.now: đồng hồ cho hạn 5 phút của bước 2 lớp.
+// Bộ khóa (tài khoản, IP) mặc định theo từng CSDL, khi gọi login() không truyền opts.accountLimiter (vd. test đơn vị).
+const defaultLimiters = new WeakMap();
+function defaultAccountLimiter(db) {
+  let l = defaultLimiters.get(db);
+  if (!l) {
+    l = createAccountIpLimiter();
+    defaultLimiters.set(db, l);
+  }
+  return l;
+}
+
+// Băm giả để tên đăng nhập không tồn tại cũng tốn thời gian như sai mật khẩu (không đo được thời gian để dò tên).
+let dummyHash = null;
+function dummyVerify(password) {
+  if (!dummyHash) dummyHash = hashPassword(crypto.randomBytes(16).toString('hex'));
+  verifyPassword(password, dummyHash);
+}
+
+// Ghi một lần sai vào trần toàn cục (cửa sổ 15 phút); trả về true nếu lần này khóa tài khoản.
+function globalFail(db, user, now) {
+  let start = Number(user.fail_window_start) || 0;
+  let fails = user.failed_logins || 0;
+  if (!start || now - start >= LOCK_MS) {
+    start = now;
+    fails = 0;
+  }
+  fails += 1;
+  if (fails >= GLOBAL_MAX_FAILS) {
+    db.prepare('UPDATE users SET failed_logins = 0, fail_window_start = NULL, locked_until = ? WHERE id = ?')
+      .run(new Date(now + LOCK_MS).toISOString(), user.id);
+    return true;
+  }
+  db.prepare('UPDATE users SET failed_logins = ?, fail_window_start = ? WHERE id = ?').run(fails, start, user.id);
+  return false;
+}
+
+// opts.config: cấu hình chạy (quyết định có bắt buộc 2 lớp); opts.now: đồng hồ;
+// opts.ip: IP người gửi (ghi nhật ký, khóa theo IP); opts.accountLimiter: bộ khóa (tài khoản, IP);
+// opts.exemptLocks: người ngồi tại máy chủ ở chế độ Internet → không bị khóa tài khoản (vẫn phải đúng mật khẩu + 2 lớp).
 function login(db, username, password, opts = {}) {
+  const clock = opts.now || Date.now;
+  const ip = opts.ip ? String(opts.ip) : '';
+  const aopts = { ip: ip || null };
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(String(username || '').trim());
-  const bad = { ok: false, error: 'Tên đăng nhập hoặc mật khẩu không đúng' };
+  // Cùng một thông báo cho tên không tồn tại, sai mật khẩu, tài khoản vô hiệu hóa (không lộ tên đăng nhập).
+  const bad = { ok: false, error: BAD_LOGIN };
   if (!user) {
-    audit.log(db, null, 'login_fail', String(username || ''), 'Tên đăng nhập không tồn tại');
+    dummyVerify(password);
+    audit.log(db, null, 'login_fail', String(username || '').slice(0, 100), 'Tên đăng nhập không tồn tại', aopts);
+    return bad;
+  }
+  const now = clock();
+  const limiter = opts.accountLimiter || defaultAccountLimiter(db);
+  const pairKey = accountIpKey(user.id, ip);
+  const until = lockedUntilMs(user.locked_until);
+  if (!opts.exemptLocks) {
+    const lockedMsg = (ms) => `Tài khoản đang bị khóa do nhập sai nhiều lần, thử lại sau ${Math.max(1, Math.ceil(ms / 60000))} phút`;
+    if (until > now) {
+      audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đang bị khóa tạm thời (sai mật khẩu nhiều lần từ nhiều nơi)', aopts);
+      return { ok: false, error: lockedMsg(until - now) };
+    }
+    const pc = limiter.check(pairKey);
+    if (pc.blocked) {
+      audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đang bị khóa tạm thời với thiết bị này', aopts);
+      return { ok: false, error: lockedMsg(pc.retryAfterMs) };
+    }
+  }
+  if (until > 0 && until <= now) {
+    db.prepare('UPDATE users SET failed_logins = 0, locked_until = NULL, fail_window_start = NULL WHERE id = ?').run(user.id);
+    user.failed_logins = 0;
+    user.fail_window_start = null;
+  }
+  const passwordOk = verifyPassword(password, user.password_hash);
+  if (!passwordOk) {
+    if (opts.exemptLocks) {
+      audit.log(db, user.id, 'login_fail', user.username, 'Sai mật khẩu (tại máy chủ)', aopts);
+      return bad;
+    }
+    const pair = limiter.fail(pairKey);
+    if (globalFail(db, user, now)) {
+      audit.log(db, user.id, 'login_fail', user.username, `Sai mật khẩu ${GLOBAL_MAX_FAILS} lần trong 15 phút (mọi thiết bị), khóa tài khoản 15 phút`, aopts);
+      return { ok: false, error: 'Nhập sai quá nhiều lần, tài khoản bị khóa 15 phút' };
+    }
+    if (pair.justBlocked) {
+      audit.log(db, user.id, 'login_fail', user.username, `Sai mật khẩu ${ACCOUNT_IP_MAX_FAILS} lần, khóa tài khoản 15 phút với thiết bị này`, aopts);
+      return { ok: false, error: `Nhập sai quá ${ACCOUNT_IP_MAX_FAILS} lần, tài khoản bị khóa 15 phút` };
+    }
+    audit.log(db, user.id, 'login_fail', user.username, 'Sai mật khẩu', aopts);
     return bad;
   }
   if (!user.active) {
-    audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đã bị vô hiệu hóa');
-    return { ok: false, error: 'Tài khoản đã bị khóa, đồng chí liên hệ quản trị viên' };
-  }
-  const now = Date.now();
-  const until = lockedUntilMs(user.locked_until);
-  if (until > now) {
-    const mins = Math.ceil((until - now) / 60000);
-    audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đang bị khóa tạm thời');
-    return { ok: false, error: `Tài khoản đang bị khóa do nhập sai nhiều lần, thử lại sau ${mins} phút` };
-  }
-  if (until > 0) {
-    db.prepare('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?').run(user.id);
-    user.failed_logins = 0;
-  }
-  if (!verifyPassword(password, user.password_hash)) {
-    const fails = user.failed_logins + 1;
-    if (fails >= MAX_FAILS) {
-      db.prepare('UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?')
-        .run(fails, new Date(now + LOCK_MS).toISOString(), user.id);
-      audit.log(db, user.id, 'login_fail', user.username, 'Sai mật khẩu, tài khoản bị khóa 15 phút');
-      return { ok: false, error: 'Nhập sai quá 5 lần, tài khoản bị khóa 15 phút' };
-    }
-    db.prepare('UPDATE users SET failed_logins = ? WHERE id = ?').run(fails, user.id);
-    audit.log(db, user.id, 'login_fail', user.username, 'Sai mật khẩu');
+    audit.log(db, user.id, 'login_fail', user.username, 'Tài khoản đã bị vô hiệu hóa', aopts);
     return bad;
   }
-  db.prepare('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?').run(user.id);
+  limiter.reset(pairKey);
   const sessionId = crypto.randomBytes(32).toString('hex');
   const mfa = mfaRequirement(db, user, opts.config);
-  const deadline = mfa ? (opts.now || Date.now)() + MFA_PENDING_MS : null;
+  const deadline = mfa ? now + MFA_PENDING_MS : null;
   db.prepare('INSERT INTO sessions (id, user_id, csrf, expires_at, mfa_pending, mfa_deadline) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(sessionId, user.id, crypto.randomBytes(24).toString('hex'), now + SESSION_MS, mfa, deadline);
-  audit.log(db, user.id, 'login', user.username, mfa ? 'Đúng mật khẩu, chờ xác thực 2 lớp' : null);
+    .run(sessionId, user.id, crypto.randomBytes(24).toString('hex'), Date.now() + SESSION_MS, mfa, deadline);
+  audit.log(db, user.id, 'login', user.username, mfa ? 'Đúng mật khẩu, chờ xác thực 2 lớp' : null, aopts);
   return { ok: true, sessionId, mustChangePassword: !!user.must_change_password, mfa };
 }
 

@@ -12,6 +12,7 @@ const aiSvc = require('../services/assistant/ai');
 const { RANKS, RANKS_WITHOUT_INTERVAL } = require('../util/ranks');
 const { AppError } = require('../util/errors');
 const { today } = require('../util/date');
+const { stripSessions } = require('../db');
 const { LABELS } = require('../util/text');
 
 const PAGE = 50;
@@ -273,11 +274,13 @@ module.exports = (db) => {
     const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
     try {
       db.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`);
+      stripSessions(file);
     } catch (e) {
       cleanup();
       return next(e);
     }
-    audit.log(db, req.user.id, 'backup', null, 'Tải bản sao lưu CSDL');
+    audit.log(db, req.user.id, 'backup', null, 'Tải bản sao lưu CSDL', { ip: req.ip });
+    res.set('Cache-Control', 'no-store');
     // Có secret.key (khóa giải mã 2 lớp) thì gói chung trong .zip để khôi phục không mất 2FA.
     const dbFile = db.prepare('PRAGMA database_list').get().file;
     const keyFile = dbFile ? path.join(path.dirname(dbFile), 'secret.key') : null;

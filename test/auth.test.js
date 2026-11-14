@@ -40,9 +40,11 @@ test('sai 5 lần thì khóa, lần 6 dù đúng vẫn bị từ chối', () => 
 
 test('hết hạn khóa thì đăng nhập được và failed_logins về 0', () => {
   const db = setup();
-  for (let i = 0; i < 5; i++) login(db, 'admin', 'sai');
+  // Khóa toàn cục: 30 lần sai từ nhiều IP (khóa theo IP riêng là 5 lần, xem phan5-final-fixes.test.js).
+  for (let i = 0; i < 30; i++) login(db, 'admin', 'sai', { ip: `10.0.${i}.1` });
+  assert.ok(db.prepare("SELECT locked_until FROM users WHERE username='admin'").get().locked_until);
   db.prepare("UPDATE users SET locked_until=? WHERE username='admin'").run(new Date(Date.now() - 60000).toISOString());
-  const r = login(db, 'admin', 'admin123');
+  const r = login(db, 'admin', 'admin123', { ip: '10.9.9.9' });
   assert.equal(r.ok, true);
   assert.equal(db.prepare("SELECT failed_logins AS f FROM users WHERE username='admin'").get().f, 0);
 });

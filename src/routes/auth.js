@@ -1,7 +1,7 @@
 const express = require('express');
 const auth = require('../auth');
 const audit = require('../services/audit');
-const { IP_BLOCK_MESSAGE, IP_MAX_FAILS } = require('../security');
+const { IP_BLOCK_MESSAGE, IP_MAX_FAILS, isLocalConsole } = require('../security');
 
 module.exports = (db) => {
   const r = express.Router();
@@ -20,10 +20,13 @@ module.exports = (db) => {
     if (limiter && limiter.check(ip).blocked) {
       return res.status(429).render('login', { title: 'Đăng nhập', error: IP_BLOCK_MESSAGE, username: username || '' });
     }
-    const result = auth.login(db, username, password, { config: req.app.locals.config, now: req.app.locals.now });
+    const result = auth.login(db, username, password, {
+      config: req.app.locals.config, now: req.app.locals.now, ip,
+      accountLimiter: req.app.locals.accountLimiter, exemptLocks: isLocalConsole(req),
+    });
     if (!result.ok) {
       if (limiter && limiter.fail(ip).justBlocked) {
-        audit.log(db, null, 'login_ip_blocked', ip, `Sai mật khẩu ${IP_MAX_FAILS} lần trong 15 phút, khóa thiết bị 15 phút`);
+        audit.log(db, null, 'login_ip_blocked', ip, `Sai mật khẩu ${IP_MAX_FAILS} lần trong 15 phút, khóa thiết bị 15 phút`, { ip });
         return res.status(429).render('login', { title: 'Đăng nhập', error: IP_BLOCK_MESSAGE, username: username || '' });
       }
       return res.status(200).render('login', { title: 'Đăng nhập', error: result.error, username: username || '' });
@@ -56,7 +59,9 @@ module.exports = (db) => {
     if (password === current) return fail('Mật khẩu mới phải khác mật khẩu cũ');
     db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
       .run(auth.hashPassword(password), req.user.id);
-    audit.log(db, req.user.id, 'change_password', req.user.username, null);
+    // Hủy mọi phiên khác của tài khoản (kẻ gian đang đăng nhập bằng mật khẩu cũ bị đẩy ra), giữ phiên hiện tại.
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND id <> ?').run(req.user.id, req.sessionId);
+    audit.log(db, req.user.id, 'change_password', req.user.username, null, { ip: req.ip });
     res.redirect('/');
   });
 

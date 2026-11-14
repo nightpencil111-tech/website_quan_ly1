@@ -115,7 +115,7 @@ function resetPassword(db, id, actorId) {
   const cur = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   if (!cur) throw new AppError('Không tìm thấy tài khoản');
   const pw = tempPassword();
-  db.prepare('UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL WHERE id = ?')
+  db.prepare('UPDATE users SET password_hash = ?, must_change_password = 1, failed_logins = 0, locked_until = NULL, fail_window_start = NULL WHERE id = ?')
     .run(hashPassword(pw), id);
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
   audit.log(db, actorId, 'user_reset_password', cur.username, 'Đặt lại mật khẩu');

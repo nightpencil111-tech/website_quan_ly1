@@ -235,6 +235,10 @@ const MIGRATIONS = [
   ALTER TABLE user_totp ADD COLUMN locked_until INTEGER;
   DELETE FROM user_totp WHERE enabled = 0;
   `,
+  `
+  ALTER TABLE audit_log ADD COLUMN ip TEXT;
+  ALTER TABLE users ADD COLUMN fail_window_start INTEGER;
+  `,
 ];
 
 // Migration đánh số phiên bản; schema_version giữ một dòng cho mỗi phiên bản đã áp dụng.
@@ -309,4 +313,21 @@ function seed(db) {
   }
 }
 
-module.exports = { openDb, migrate, seed };
+// Bản sao lưu (đã VACUUM INTO) không được chứa phiên đăng nhập đang sống: ai có tệp sao lưu sẽ dùng được
+// mã phiên để vào hệ thống mà không cần mật khẩu, 2 lớp. Xóa sạch bảng sessions trong BẢN SAO (không đụng CSDL đang chạy),
+// secure_delete + VACUUM để mã phiên không còn sót trong trang trống của tệp.
+function stripSessions(file) {
+  const db = new DatabaseSync(file);
+  try {
+    db.exec('PRAGMA journal_mode = DELETE');
+    db.exec('PRAGMA secure_delete = ON');
+    if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'sessions'").get()) {
+      db.exec('DELETE FROM sessions');
+    }
+    db.exec('VACUUM');
+  } finally {
+    db.close();
+  }
+}
+
+module.exports = { openDb, migrate, seed, stripSessions };
