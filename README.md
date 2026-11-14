@@ -64,7 +64,7 @@ npx playwright install chromium
 - **Sao lưu:** đăng nhập bằng `admin`, vào **Sao lưu dữ liệu** và bấm tải về. Nếu hệ thống đã có khóa xác thực 2 lớp (`data/secret.key`), tệp tải về là `saoluu-YYYY-MM-DD.zip` chứa `data.db` và `secret.key`; nếu không, là tệp `.db`. Cũng có thể chạy `npm run backup` (hoặc `scripts\windows\backup.cmd`): tạo `backups/saoluu-YYYY-MM-DD-HHmm.db` kèm `.key` cùng tên, giữ 30 bản mới nhất; đổi thư mục bằng `backupDir` trong `quanly.config.json` hoặc biến `QLCTV_BACKUP_DIR`.
 - **Khôi phục:** (1) dừng ứng dụng (Ctrl+C); (2) xóa `data/data.db-wal` và `data/data.db-shm` nếu có; (3) chép bản sao lưu đè thành `data/data.db` (giải nén nếu là `.zip`; với bản `saoluu-...-HHmm.db` thì đổi tên thành `data.db`), **đồng thời chép khóa `secret.key` (hoặc `saoluu-...-HHmm.key` đổi tên thành `secret.key`) vào cùng thư mục `data/`**, nếu thiếu khóa thì mọi tài khoản đã bật 2 lớp không đăng nhập được; (4) khởi động lại ứng dụng. Không bỏ qua bước 2, nếu không dữ liệu cũ có thể bị trộn lẫn hoặc báo hỏng.
 - Ứng dụng luôn dùng `data/data.db` nằm cạnh thư mục ứng dụng, dù khởi động từ thư mục nào (có thể đổi bằng biến `DB_PATH`). Dừng bằng Ctrl+C để dữ liệu được ghi gọn.
-- Bản sao lưu chứa cả mật khẩu đã băm của mọi tài khoản: cất giữ ở nơi an toàn, không gửi qua kênh không được phép.
+- Bản sao lưu chứa cả mật khẩu đã băm của mọi tài khoản: cất giữ ở nơi an toàn, không gửi qua kênh không được phép. Bản sao lưu không chứa phiên đăng nhập (đã xóa khi sao lưu), nên sau khi khôi phục mọi người phải đăng nhập lại.
 
 ## 6. Tự chạy khi bật máy và tự sao lưu (Windows)
 
@@ -73,7 +73,7 @@ npx playwright install chromium
 1. Mở PowerShell bằng quyền Administrator (chuột phải, "Run as administrator"), vào thư mục ứng dụng.
 2. Chạy: `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. Kịch bản tạo tác vụ `QuanLyCTV-Web` (chạy khi bật máy, tự chạy lại khi lỗi, nhật ký ở `logs\server.log`) và `QuanLyCTV-SaoLuu` (02:30 hằng ngày), mở cổng tường lửa nếu chạy nội bộ, rồi khởi động ngay. Chạy lại là cài đè.
 3. Gỡ: `powershell -ExecutionPolicy Bypass -File scripts\windows\uninstall.ps1`.
-4. Chạy tay không cài tác vụ: nhấp đúp `scripts\windows\start.cmd`. Nếu tác vụ đang chạy, `start.cmd` sẽ báo lỗi `EADDRINUSE` (cổng đã bị chiếm): dừng tác vụ trước bằng `Stop-ScheduledTask QuanLyCTV-Web`.
+4. Chạy tay không cài tác vụ: nhấp đúp `scripts\windows\start.cmd`. Nếu tác vụ đang chạy, `start.cmd` sẽ báo lỗi `EADDRINUSE` (cổng đã bị chiếm): dừng tác vụ trước bằng `Stop-ScheduledTask -TaskName QuanLyCTV-Web` trong PowerShell **mở bằng quyền Administrator** (xem "Dừng ứng dụng" ở mục 15).
 5. Tác vụ chạy qua `scripts\windows\run-server.cmd`: nếu máy chủ thoát vì lỗi thì chờ 60 giây rồi chạy lại. Ở chế độ Internet, nếu kiểm tra khởi động không đạt (ví dụ chưa đổi mật khẩu `admin`), máy chủ sẽ thử lại mỗi 60 giây và ghi lý do bằng tiếng Việt vào `logs\server.log` mỗi lần; sửa xong sẽ tự chạy. Nhật ký quá khoảng 10 MB được đổi thành `server.old.log`.
 6. Tường lửa: chỉ mở cổng khi `mode` là `noi_bo` hoặc `listenLan` là `true` trong `quanly.config.json`, và chỉ cho hồ sơ mạng Domain/Private (Wi-Fi công cộng không được mở). Biến môi trường không ảnh hưởng quyết định này.
 
@@ -83,7 +83,7 @@ Cấu hình tùy chọn: chép `quanly.config.example.json` thành `quanly.confi
 
 - Mặc định chỉ dùng trong mạng nội bộ. Muốn truy cập từ ngoài Internet phải làm đúng mục 15 (có xác thực 2 lớp, HTTPS) và được chỉ huy cho phép; không tự mở cổng router.
 - **Không nhập thông tin mật** (tài liệu, nội dung có độ mật) vào hệ thống.
-- Đổi mật khẩu mặc định ngay; đăng nhập sai 5 lần sẽ bị khóa 15 phút; phiên làm việc hết hạn sau 8 giờ không hoạt động.
+- Đổi mật khẩu mặc định ngay; đăng nhập sai 5 lần từ một máy sẽ khóa tài khoản với máy đó 15 phút (chi tiết ở mục 15, phần Lưu ý); phiên làm việc hết hạn sau 8 giờ không hoạt động; đổi mật khẩu sẽ đăng xuất các phiên khác của tài khoản.
 - Tuân thủ quy định của đơn vị về quản lý, sử dụng máy tính và dữ liệu.
 
 ## 8. Vai trò
@@ -273,37 +273,67 @@ AI dùng để viết nội dung từ dàn ý, sửa chính tả, chỉnh văn p
 - **Cổng 3000 đang được dùng** (`EADDRINUSE`): chọn cổng khác, ví dụ `$env:PORT = 8080; npm start`, rồi mở cổng đó trong tường lửa.
 - **Báo phiên bản Node quá cũ** hoặc lỗi `node:sqlite`: kiểm tra `node -v`, cài lại Node.js 22 LTS (≥ 22.13).
 - **Máy khác không vào được:** kiểm tra IP bằng `ipconfig`, hai máy cùng mạng, đã mở cổng tường lửa như mục 3.
-- **Quên mật khẩu:** quản trị viên bấm "Đặt lại mật khẩu" ở mục Tài khoản. Nếu quên mật khẩu admin duy nhất, liên hệ người cài đặt để khôi phục từ bản sao lưu.
+- **Quên mật khẩu:** quản trị viên bấm "Đặt lại mật khẩu" ở mục Tài khoản. Nếu quên mật khẩu admin duy nhất, liên hệ người cài đặt để khôi phục từ bản sao lưu. Quản trị viên mất cả điện thoại lẫn mã dự phòng 2 lớp: chạy `scripts\windows\reset-2fa.cmd` ngay trên máy chủ (mục 15).
 - Đặt đường dẫn dữ liệu khác bằng biến `DB_PATH`.
 
 ## 15. Đưa lên Internet
 
-> **CẢNH BÁO QUAN TRỌNG.** Luật Bảo vệ bí mật nhà nước 2018 **cấm** lưu trữ tài liệu bí mật nhà nước trên máy tính có kết nối Internet. Trước khi làm các bước dưới đây, đồng chí **phải báo cáo và được sự đồng ý của chỉ huy đơn vị và cán bộ bảo mật**. Khi hệ thống mở ra Internet, **tuyệt đối không nhập bất kỳ nội dung có độ mật nào** (tài liệu, tư tưởng chi tiết, thông tin nhạy cảm). Nếu chưa được phép, chỉ dùng trong mạng nội bộ (mục 2 và 3).
+> **CẢNH BÁO QUAN TRỌNG.** Luật Bảo vệ bí mật nhà nước 2018 (Điều 5, các hành vi bị nghiêm cấm) **cấm** soạn thảo, lưu giữ tài liệu có nội dung bí mật nhà nước trên máy tính, thiết bị đã hoặc đang kết nối với mạng Internet, **mạng máy tính, mạng viễn thông** (trừ trường hợp luật cho phép theo quy định về cơ yếu). Như vậy **chạy trong mạng nội bộ cũng không phải là ngoại lệ**: dù ở chế độ nào cũng không nhập nội dung mật. Trước khi làm các bước dưới đây, đồng chí **phải báo cáo và được sự đồng ý của chỉ huy đơn vị và cán bộ bảo mật**. Khi hệ thống mở ra Internet, **tuyệt đối không nhập bất kỳ nội dung có độ mật nào** (tài liệu, tư tưởng chi tiết, thông tin nhạy cảm). Nếu chưa được phép, chỉ dùng trong mạng nội bộ (mục 2 và 3).
+>
+> Hồ sơ quân nhân có thông tin gia đình, sức khỏe, ghi nhận tư tưởng: đây là **dữ liệu cá nhân** (một phần có thể là dữ liệu cá nhân nhạy cảm) theo Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân và các văn bản sửa đổi, thay thế (nếu có). Đưa các dữ liệu này lên một hệ thống truy cập được từ Internet cần chỉ huy cân nhắc; nhà phát triển không đưa ra ý kiến pháp lý, đồng chí hỏi cán bộ bảo mật hoặc pháp chế của đơn vị.
 
 Cách làm: dùng **Tailscale Funnel** để cấp một địa chỉ `https://...ts.net` trỏ vào máy Surface đang chạy ứng dụng; không phải mở cổng trên router. Cần một tài khoản Google hoặc Microsoft để đăng nhập Tailscale.
 
-**Các bước (làm lần lượt):**
+**Các bước (làm lần lượt, đúng thứ tự):**
 
-1. **Đổi mật khẩu admin và bỏ dữ liệu thử.** Nếu từng chạy `npm run demo`: dừng ứng dụng (Ctrl+C hoặc `Stop-ScheduledTask QuanLyCTV-Web`), xóa thư mục `data`, chạy lại `npm start` để có cơ sở dữ liệu mới (rồi dừng). Đăng nhập `admin / admin123`, đổi mật khẩu. Ở chế độ Internet, kiểm tra khi khởi động sẽ **từ chối chạy** nếu còn tài khoản thử hoặc mật khẩu mặc định.
-2. **Tạo cấu hình.** Chép `quanly.config.example.json` thành `quanly.config.json`, mở bằng Notepad, sửa `"mode": "internet"` (giữ nguyên dấu nháy, dấu phẩy). Mục `publicUrl` điền ở bước 5.
-3. **Cài Tailscale cho Windows.** Tải tại https://tailscale.com/download, cài đặt, mở và đăng nhập bằng tài khoản Google hoặc Microsoft.
-4. **Bật HTTPS và Funnel cho máy.** Việc này làm trong trang quản trị Tailscale (đăng nhập tại tailscale.com bằng cùng tài khoản): bật chứng chỉ HTTPS cho mạng và cho phép Funnel với máy này. Nhà phát triển không truy cập được trang Tailscale khi soạn tài liệu nên **không ghi tên menu cụ thể** (giao diện có thể đổi); đồng chí làm **theo hướng dẫn trên trang tailscale.com/kb/1223/funnel**.
-5. **Bật Funnel.** Mở PowerShell, chạy:
+1. **Chuẩn bị dữ liệu ở chế độ nội bộ** (chưa có `quanly.config.json`, hoặc `mode` là `noi_bo`):
+   1. Khởi động ứng dụng (`npm start` hoặc nhấp đúp `scripts\windows\start.cmd`; nếu đã cài tự chạy ở mục 6 thì ứng dụng đang chạy sẵn).
+   2. **Trên chính máy Surface**, mở trình duyệt vào `http://localhost:3000`, đăng nhập `admin` (mật khẩu `admin123`, hoặc `Demo@1234` nếu từng chạy `npm run demo`) và **đổi mật khẩu** khi được yêu cầu.
+   3. Nếu từng chạy `npm run demo` trên dữ liệu này, phải bỏ dữ liệu thử (kiểm tra khi khởi động ở chế độ Internet sẽ **từ chối chạy** nếu còn tài khoản thử dùng mật khẩu `Demo@1234` hoặc `admin` chưa đổi mật khẩu):
+      - **Chưa nhập dữ liệu thật nào:** vào **Quản trị → Sao lưu dữ liệu** tải một bản sao lưu cho chắc, dừng ứng dụng (mục "Dừng ứng dụng" dưới đây), **đổi tên** thư mục `data` thành `data-thu` (đổi tên, không xóa), khởi động lại để có cơ sở dữ liệu mới, rồi làm lại bước 1.2 với `admin / admin123`.
+      - **Đã nhập dữ liệu thật:** **không** đổi tên hay xóa thư mục `data`. Vào **Quản trị → Tài khoản**, với từng tài khoản thử `ctv`, `cs01` … `cs10`: bấm **Đặt lại mật khẩu** (mật khẩu `Demo@1234` mất hiệu lực) rồi bấm **Khóa** ở tài khoản đó; xóa tay các công việc, hồ sơ hư cấu nếu không cần.
+   4. Dừng ứng dụng (xem "Dừng ứng dụng" dưới đây).
+2. **Cài Tailscale cho Windows.** Tải tại https://tailscale.com/download, cài đặt, mở và đăng nhập bằng tài khoản Google hoặc Microsoft.
+3. **Cài đặt Tailscale cần thiết** (làm trên trang quản trị Tailscale, đăng nhập tại tailscale.com bằng cùng tài khoản, và trên biểu tượng Tailscale ở góc màn hình). Giao diện Tailscale có thể đổi; tên chức năng dưới đây là tên Tailscale đặt, nếu không thấy đúng chỗ thì xem **tailscale.com/kb/1223/funnel**:
+   - Bật **MagicDNS** và **HTTPS Certificates** (chứng chỉ HTTPS) cho mạng Tailscale (thường ở trang DNS). Không có hai mục này thì Funnel không cấp được địa chỉ `https://`.
+   - Cho phép **Funnel** với máy này (thuộc tính `funnel` trong chính sách truy cập). Cách dễ nhất: ở bước 6, nếu chưa được phép, lệnh `tailscale funnel` sẽ **in ra một đường link** `https://login.tailscale.com/...`; mở link đó, bấm đồng ý, rồi chạy lại lệnh.
+   - Trên máy Surface: bấm biểu tượng Tailscale ở khay hệ thống, bật **Run unattended** (chạy cả khi chưa đăng nhập Windows). Nếu không bật, sau khi khởi động lại máy, ứng dụng vẫn chạy nhưng Internet không vào được cho đến khi có người đăng nhập Windows.
+   - Trong trang quản trị Tailscale, mục danh sách máy (Machines): ở máy Surface chọn **Disable key expiry** (tắt hết hạn khóa). Nếu không, khoảng 180 ngày sau Funnel sẽ ngừng mà không báo.
+4. **Lấy địa chỉ công khai và tạo cấu hình.** Mở PowerShell, chạy:
+   ```powershell
+   (tailscale status --json | ConvertFrom-Json).Self.DNSName
+   ```
+   Kết quả dạng `surface.tail1234.ts.net.` (bỏ dấu chấm cuối). Chép `quanly.config.example.json` thành `quanly.config.json`, mở bằng Notepad, sửa `"mode": "internet"` và `"publicUrl": "https://surface.tail1234.ts.net"` (thay bằng tên của máy; giữ nguyên dấu nháy, dấu phẩy).
+5. **Chạy ứng dụng ở chế độ Internet.** Trước hết **bảo đảm không còn bản ứng dụng nào đang chạy** ở chế độ nội bộ (đóng mọi cửa sổ `start.cmd`, làm theo "Dừng ứng dụng"). Mở PowerShell **bằng quyền Administrator**, vào thư mục ứng dụng, chạy `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. **Chạy lại lệnh này sau mỗi lần sửa `quanly.config.json`.** Mở `logs\server.log`: phải có dòng `Chế độ Internet: truy cập từ xa qua https://...`; nếu thấy "Từ chối chạy ở chế độ Internet" thì sửa theo lý do ghi trong đó.
+6. **Chỉ bây giờ mới bật Funnel** (khi ứng dụng đã chạy ở chế độ Internet, để Internet không bao giờ vào được bản chạy chế độ nội bộ). Trong PowerShell:
    ```powershell
    tailscale funnel --bg 3000
    ```
-   Lệnh in ra địa chỉ dạng `https://<tên-máy>.<tên-mạng>.ts.net`. Chép địa chỉ đó vào `publicUrl` trong `quanly.config.json`, ví dụ `"publicUrl": "https://surface.tail1234.ts.net"`. (Nếu đổi cổng thì thay `3000` bằng cổng đó.)
-6. **Cài tự chạy.** Mở PowerShell **bằng quyền Administrator**, vào thư mục ứng dụng, chạy `powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1`. **Chạy lại lệnh này sau mỗi lần sửa `quanly.config.json`.**
-7. **Đăng nhập và bật 2 lớp.** Dùng điện thoại, **tắt Wi-Fi, dùng 4G**, mở địa chỉ công khai, đăng nhập `admin`. Hệ thống bắt buộc bật xác thực 2 lớp: cài Google Authenticator hoặc Microsoft Authenticator, quét mã QR, nhập mã 6 số, rồi **chép 10 mã dự phòng ra giấy** và cất kỹ.
-8. **Tạo tài khoản** cho cán bộ, chiến sĩ (Quản trị → Tài khoản) và gửi địa chỉ công khai cho họ. Tài khoản quản trị và quản lý sẽ phải bật 2 lớp ở lần đăng nhập đầu; chiến sĩ có thể tự bật ở **Bảo mật tài khoản**.
-9. **Kiểm tra địa chỉ IP thật.** Nhờ một người đăng nhập từ điện thoại, rồi vào **Quản trị → Nhật ký**, xem dòng đăng nhập: địa chỉ phải là IP của người đó, **không phải `127.0.0.1`**. Nếu mọi dòng đều là `127.0.0.1`: **tắt Funnel ngay (bước 10) và báo lại**, vì khi đó mọi người dùng chung một bộ đếm đăng nhập sai và chức năng chống dò mật khẩu không đúng.
-10. **Tắt Internet tạm thời:** `tailscale funnel --https=443 off` hoặc `tailscale funnel reset`. Bật lại: `tailscale funnel --bg 3000`. Xem trạng thái: `tailscale funnel status`.
+   Lệnh in ra địa chỉ `https://<tên-máy>.<tên-mạng>.ts.net`, phải **trùng** với `publicUrl`. (Nếu đổi cổng thì thay `3000` bằng cổng đó.) Nếu lệnh in ra một đường link thay vì địa chỉ, làm theo bước 3 rồi chạy lại.
+7. **Bật xác thực 2 lớp cho admin.** **Cài Google Authenticator hoặc Microsoft Authenticator trên điện thoại trước**, vì sau khi nhập mật khẩu chỉ có **5 phút** để bật 2 lớp (quá 5 phút phải đăng nhập lại). Trên **máy tính** (ngay máy Surface cũng được), mở địa chỉ công khai `https://...ts.net`, đăng nhập `admin`. Trang bật 2 lớp hiện mã QR **trên màn hình máy tính**: dùng **điện thoại** quét mã đó trong ứng dụng xác thực. Không quét được thì chọn **Nhập khóa thiết lập** (Google) hoặc **Nhập mã theo cách thủ công** (Microsoft) và gõ khóa chữ hiện dưới mã QR, cách này cũng dùng được. Nhập mã 6 số, rồi **chép 10 mã dự phòng ra giấy** và cất kỹ. Sau đó thử đăng nhập lại từ điện thoại (**tắt Wi-Fi, dùng 4G**) để chắc chắn vào được từ Internet.
+8. **Tạo tài khoản** cho cán bộ, chiến sĩ (Quản trị → Tài khoản) và gửi địa chỉ công khai cho họ. Tài khoản quản trị và quản lý sẽ phải bật 2 lớp ở lần đăng nhập đầu (nhắc họ cài ứng dụng xác thực trước và dùng máy tính để hiện mã QR, hoặc nhập khóa thủ công trên chính điện thoại); chiến sĩ có thể tự bật ở **Bảo mật tài khoản**. Nên tạo thêm **một tài khoản quản trị thứ hai** (bật 2 lớp, mật khẩu cất riêng) để dự phòng.
+9. **Kiểm tra địa chỉ IP thật.** Nhờ một người đăng nhập từ điện thoại dùng 4G, rồi vào **Quản trị → Nhật ký**, xem cột **IP** của dòng "Đăng nhập": phải là IP của người đó, **không phải `127.0.0.1`** (dòng đăng nhập ngay trên máy Surface qua `http://localhost:3000` thì là `127.0.0.1`, đúng như vậy). Nếu mọi lần đăng nhập từ xa đều là `127.0.0.1`: **tắt Funnel ngay (bước 10) và báo lại**, vì khi đó mọi người dùng chung một bộ đếm đăng nhập sai và chức năng chống dò mật khẩu không đúng.
+10. **Tắt Internet tạm thời:** `tailscale funnel --https=443 off` hoặc `tailscale funnel reset` (lệnh `reset` xóa cả cấu hình `tailscale serve` khác nếu có). Bật lại: `tailscale funnel --bg 3000`. Xem trạng thái: `tailscale funnel status`.
+
+**Dừng ứng dụng** (dùng ở bước 1, bước 5 và khi khôi phục):
+
+- Đang chạy bằng cửa sổ `start.cmd` hoặc `npm start`: bấm Ctrl+C trong cửa sổ đó.
+- Đã cài tự chạy (mục 6): mở PowerShell **bằng quyền Administrator** (tác vụ được cài với quyền cao nhất, PowerShell thường không dừng được) và chạy:
+  ```powershell
+  Stop-ScheduledTask -TaskName QuanLyCTV-Web
+  Get-Process node -ErrorAction SilentlyContinue
+  ```
+  Nếu lệnh thứ hai còn in ra tiến trình `node`, mở Task Manager (Ctrl+Shift+Esc) → thẻ **Details**, chọn `node.exe` → **End task** (nhà phát triển chưa kiểm chứng trên Windows việc dừng tác vụ có dừng luôn `node.exe` hay không). Chỉ chép đè tệp dữ liệu khi không còn `node.exe` nào. Chạy lại: `Start-ScheduledTask -TaskName QuanLyCTV-Web` (cũng bằng quyền Administrator).
 
 **Lưu ý:**
 
-- Ở chế độ Internet, mở `http://localhost:3000` ngay trên máy Surface có thể **không giữ được đăng nhập** (cookie yêu cầu HTTPS); hãy dùng địa chỉ công khai `https://...ts.net`.
+- Ở chế độ Internet, trên chính máy Surface thường dùng được `http://localhost:3000` (Chrome và Edge coi `localhost` là an toàn nên giữ được đăng nhập); nếu trình duyệt không giữ được đăng nhập (trang đăng nhập cứ hiện lại), dùng địa chỉ công khai `https://...ts.net`.
+- **`listenLan: true` ở chế độ Internet:** các máy trong mạng nội bộ vào bằng `http://<IP>:3000` sẽ **không đăng nhập được** (cookie đăng nhập chỉ gửi qua HTTPS). Đây là cấu hình không hỗ trợ; ở chế độ Internet, mọi người (kể cả trong mạng nội bộ) dùng địa chỉ `https://...ts.net`.
 - Máy Surface **phải luôn bật và có mạng**. Vào Settings → System → Power, đặt "Sleep" thành **Never** khi cắm điện.
-- Ai biết mật khẩu một tài khoản có thể cố tình nhập sai mã 2 lớp để **khóa xác thực 2 lớp của tài khoản đó 15 phút** (gây phiền, không vào được hệ thống). Nếu nghi ngờ: đổi mật khẩu tài khoản, kiểm tra **Nhật ký**.
-- Mất điện thoại: quản trị viên bấm **Đặt lại xác thực 2 lớp** ở mục Tài khoản, người dùng bật lại ở lần đăng nhập kế. Quản trị viên mất điện thoại: dùng **mã dự phòng** (ô "Dùng mã dự phòng" ở trang nhập mã). Hết mã dự phòng thì khôi phục từ sao lưu.
-- **Khôi phục từ sao lưu:** gói `.zip` tải về chứa `data.db` và `secret.key`; sao lưu hằng ngày trong `backups\` là từng cặp `.db` + `.key`. Dừng tác vụ (`Stop-ScheduledTask QuanLyCTV-Web`), chép vào thư mục `data\` với tên `data.db` và `secret.key`, xóa `data.db-wal` và `data.db-shm` nếu có, rồi `Start-ScheduledTask QuanLyCTV-Web`. Bản sao lưu chứa khóa `secret.key`, nên cất như tài liệu quan trọng.
+- Địa chỉ `...ts.net` sẽ **bị công khai**: mọi chứng chỉ HTTPS đều được ghi vào nhật ký công khai (Certificate Transparency), nên các máy quét trên Internet tìm ra địa chỉ chỉ sau vài phút. Thấy trong **Nhật ký** nhiều lần "Đăng nhập thất bại" hoặc "Khóa thiết bị (IP)" từ IP lạ là chuyện **bình thường**; hệ thống đã tự khóa. Chỉ lo khi thấy "Đăng nhập" thành công lạ: đổi mật khẩu tài khoản đó ngay.
+- **Khóa khi đăng nhập sai:** sai mật khẩu 5 lần từ một thiết bị (IP) thì tài khoản bị khóa **với riêng thiết bị đó** 15 phút, người dùng ở nơi khác vẫn đăng nhập được; sai tổng cộng 30 lần từ mọi nơi trong 15 phút thì tài khoản bị khóa ở mọi nơi 15 phút. Một thiết bị sai 10 lần (bất kỳ tài khoản nào) thì thiết bị đó bị chặn 15 phút. **Người ngồi ngay tại máy Surface**, mở `http://localhost:3000`, **không bị khóa tài khoản** (vẫn phải đúng mật khẩu và mã 2 lớp): nếu kẻ gian cố tình nhập sai để khóa `admin`, quản trị viên vẫn đăng nhập được tại máy Surface.
+- Ai biết mật khẩu một tài khoản có thể cố tình nhập sai mã 2 lớp để **khóa xác thực 2 lớp của tài khoản đó 15 phút** (gây phiền, không vào được hệ thống). Nếu nghi ngờ: đổi mật khẩu tài khoản (đổi mật khẩu sẽ **đăng xuất mọi phiên khác** của tài khoản), kiểm tra **Nhật ký**.
+- Mất điện thoại: quản trị viên bấm **Đặt lại xác thực 2 lớp** ở mục Tài khoản, người dùng bật lại ở lần đăng nhập kế. Quản trị viên mất điện thoại: dùng **mã dự phòng** (ô "Dùng mã dự phòng" ở trang nhập mã), hoặc nhờ quản trị viên thứ hai đặt lại.
+- **Quản trị viên mất cả điện thoại lẫn mã dự phòng** (và không có quản trị viên thứ hai): **ngồi tại máy Surface**, nhấp đúp `scripts\windows\reset-2fa.cmd`, gõ tên đăng nhập (ví dụ `admin`) rồi Enter; hoặc trong PowerShell ở thư mục ứng dụng chạy `node scripts\reset-2fa.js admin`. Lệnh xóa xác thực 2 lớp của tài khoản đó, đăng xuất mọi phiên, mở khóa đăng nhập và ghi vào Nhật ký ("Đặt lại xác thực 2 lớp", chi tiết `CLI`); không cần dừng ứng dụng. Lần đăng nhập tới, tài khoản phải bật lại 2 lớp (bước 7). **Không** khôi phục bản sao lưu để làm việc này: bản sao lưu chứa đúng khóa 2 lớp cũ (nằm trên điện thoại đã mất), và sẽ làm mất dữ liệu nhập sau ngày sao lưu.
+- **Khôi phục từ sao lưu:** gói `.zip` tải về chứa `data.db` và `secret.key`; sao lưu hằng ngày trong `backups\` là từng cặp `.db` + `.key`. Dừng ứng dụng (xem "Dừng ứng dụng"), chép vào thư mục `data\` với tên `data.db` và `secret.key`, xóa `data.db-wal` và `data.db-shm` nếu có, rồi `Start-ScheduledTask -TaskName QuanLyCTV-Web` (PowerShell quyền Administrator). Bản sao lưu chứa khóa `secret.key` và mật khẩu đã băm, nên cất như tài liệu quan trọng; bản sao lưu **không** chứa phiên đăng nhập, sau khi khôi phục mọi người đăng nhập lại.
 - Các kịch bản Windows và lệnh Tailscale **chưa được nhà phát triển chạy thử trên Windows**. Nếu gặp lỗi, chụp màn hình thông báo và gửi lại để sửa.
